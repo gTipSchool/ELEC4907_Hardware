@@ -1,0 +1,27 @@
+(comment) Net Cfg to Hardware Conversion:
+(comment) Input Network Cfg File Format (.txt):
+(comment) High-level parameters:
+<(int) Total number of neurons (includes inputs and outputs)>
+<(int) Number of input neurons>
+<(int) Number of output neurons>
+<(int) Maximum number of timesteps>
+<(int) Default neuron output step length>
+<(int) Neuron Model precision (number of bits)>
+<(int) Weight precision (number of bits)(must be less than neuron precision)>
+<(bool) dynamic/static weight, const current, and step length selection (0 for weights prior to synthesis, 1 to load weights in after synthesis)>
+
+(comment) Neuron ID/Address Table:
+<(int) neuron address> <(string) neuron identification/name (no spaces and can't start with a number)>
+...
+
+(comment) List of Neuron Weights:
+<(int) presynaptic neuron address> <(int) postsynaptic neuron address> <(float) weight value>
+...
+
+(comment) List of Constant Currents (does not include currents for input neurons):
+<(int) neuron address> <(float) constant current>
+...
+
+(comment) List of Output Step Lengths (overwriting the default step length):
+<(int) neuron address> <(int) step length>
+...

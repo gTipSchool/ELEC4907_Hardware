@@ -1,0 +1,26 @@
+# compile verilog/system verilog design source files
+verilog xil_defaultlib  --include "../../../../top_level_tests.gen/sources_1/ip/clk_wiz_0" \
+"../../../../top_level_tests.gen/sources_1/ip/clk_wiz_0/clk_wiz_0_clk_wiz.v" \
+"../../../../top_level_tests.gen/sources_1/ip/clk_wiz_0/clk_wiz_0.v" \
+
+sv xil_defaultlib  --include "../../../../top_level_tests.gen/sources_1/ip/clk_wiz_0" \
+"../../../../../RTL/sn_1r1w_mem.sv" \
+"../../../../../RTL/sn_api_ctrlr.sv" \
+"../../../../../RTL/sn_io_mgmt.sv" \
+"../../../../../RTL/sn_io_protocol.sv" \
+"../../../../../RTL/sn_net_ctrlr.sv" \
+"../../../../../RTL/sn_network.sv" \
+"../../../../../RTL/sn_network_cfg.sv" \
+"../../../../../RTL/sn_network_top.sv" \
+"../../../../../RTL/sn_network_top_cfg.sv" \
+"../../../../../RTL/sn_neuron.sv" \
+"../../../../../RTL/sn_neuron_cfg.sv" \
+"../../../../../RTL/sn_uart_rx.sv" \
+"../../../../../RTL/sn_uart_tx.sv" \
+"../../../../../RTL/sn_network_top_tb.sv" \
+
+# compile glbl module
+verilog xil_defaultlib "glbl.v"
+
+# Do not sort compile order
+nosort

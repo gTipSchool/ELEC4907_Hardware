@@ -1,0 +1,28 @@
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_1r1w_mem.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_1r1w_mem
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_api_ctrlr.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_api_ctrlr
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_io_mgmt.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_io_mgmt
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_io_protocol.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_io_protocol
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_net_ctrlr.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_net_ctrlr
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_network.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_network
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_network_cfg.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_network_cfg
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_network_top.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_network_top
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_network_top_cfg.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_network_top_cfg
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_neuron.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_neuron
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_neuron_cfg.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_neuron_cfg
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_uart_rx.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_uart_rx
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_uart_tx.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_uart_tx
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "H:/ELEC4907/Hardware/RTL/sn_network_top_tb.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module sn_network_top_tb

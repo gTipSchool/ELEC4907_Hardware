@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="sn_network_top_tb_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="sn_network_top_tb" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="4,208,072.397 ns"></ZoomStartTime>
+      <ZoomEndTime time="4,208,957.521 ns"></ZoomEndTime>
+      <Cursor1Time time="4,208,810.000 ns"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="280"></NameColumnWidth>
+      <ValueColumnWidth column_width="136"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="22" />
+   <wvobject fp_name="group51" type="group">
+      <obj_property name="label">Misc Env</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/sn_network_top_tb/received_spike_counters" type="array">
+         <obj_property name="ElementShortName">received_spike_counters[2:0][7:0]</obj_property>
+         <obj_property name="ObjectShortName">received_spike_counters[2:0][7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/max_period" type="array">
+         <obj_property name="ElementShortName">max_period[15:0]</obj_property>
+         <obj_property name="ObjectShortName">max_period[15:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/cur_period" type="array">
+         <obj_property name="ElementShortName">cur_period[15:0]</obj_property>
+         <obj_property name="ObjectShortName">cur_period[15:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/prot_num_retried_writes" type="array">
+         <obj_property name="ElementShortName">prot_num_retried_writes[31:0]</obj_property>
+         <obj_property name="ObjectShortName">prot_num_retried_writes[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/prot_num_retried_reads" type="array">
+         <obj_property name="ElementShortName">prot_num_retried_reads[31:0]</obj_property>
+         <obj_property name="ObjectShortName">prot_num_retried_reads[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/v_out" type="array">
+         <obj_property name="ElementShortName">v_out[5:1][17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[5:1][17:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/u_out" type="array">
+         <obj_property name="ElementShortName">u_out[5:1][17:0]</obj_property>
+         <obj_property name="ObjectShortName">u_out[5:1][17:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/nc_evaluate" type="logic">
+         <obj_property name="ElementShortName">nc_evaluate</obj_property>
+         <obj_property name="ObjectShortName">nc_evaluate</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/rst" type="logic">
+      <obj_property name="ElementShortName">rst</obj_property>
+      <obj_property name="ObjectShortName">rst</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/verif_state" type="array">
+      <obj_property name="ElementShortName">verif_state[31:0]</obj_property>
+      <obj_property name="ObjectShortName">verif_state[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/prot_if_state" type="array">
+      <obj_property name="ElementShortName">prot_if_state[31:0]</obj_property>
+      <obj_property name="ObjectShortName">prot_if_state[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/uart_state" type="array">
+      <obj_property name="ElementShortName">uart_state[31:0]</obj_property>
+      <obj_property name="ObjectShortName">uart_state[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="group52" type="group">
+      <obj_property name="label">UART DV</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/uart_tx" type="logic">
+         <obj_property name="ElementShortName">uart_tx</obj_property>
+         <obj_property name="ObjectShortName">uart_tx</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/uart_rx" type="logic">
+         <obj_property name="ElementShortName">uart_rx</obj_property>
+         <obj_property name="ObjectShortName">uart_rx</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/uart_tx_word" type="array">
+         <obj_property name="ElementShortName">uart_tx_word[7:0]</obj_property>
+         <obj_property name="ObjectShortName">uart_tx_word[7:0]</obj_property>
+         <obj_property name="Radix">HEXRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/tx_bit" type="array">
+         <obj_property name="ElementShortName">tx_bit[3:0]</obj_property>
+         <obj_property name="ObjectShortName">tx_bit[3:0]</obj_property>
+         <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/uart_rx_word" type="array">
+         <obj_property name="ElementShortName">uart_rx_word[7:0]</obj_property>
+         <obj_property name="ObjectShortName">uart_rx_word[7:0]</obj_property>
+         <obj_property name="Radix">HEXRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/rx_bit" type="array">
+         <obj_property name="ElementShortName">rx_bit[3:0]</obj_property>
+         <obj_property name="ObjectShortName">rx_bit[3:0]</obj_property>
+         <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group75" type="group">
+      <obj_property name="label">UART RTL</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="group82" type="group">
+         <obj_property name="label">Protocol Interface</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+      <wvobject fp_name="group81" type="group">
+         <obj_property name="label">TX</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+      <wvobject fp_name="group80" type="group">
+         <obj_property name="label">RX</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /cfg_table_contents" type="array">
+      <obj_property name="ElementShortName">cfg_table_contents[4:1][1:0][10:0]</obj_property>
+      <obj_property name="ObjectShortName">cfg_table_contents[4:1][1:0][10:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="group105" type="group">
+      <obj_property name="label">CSRs</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="group104" type="group">
+         <obj_property name="label">CSR Enables</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/io_mgmt_i/spike_cntr" type="array">
+         <obj_property name="ElementShortName">spike_cntr[2:0][7:0]</obj_property>
+         <obj_property name="ObjectShortName">spike_cntr[2:0][7:0]</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group114" type="group">
+      <obj_property name="label">Network Controller</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/io_nc_start" type="logic">
+         <obj_property name="ElementShortName">io_nc_start</obj_property>
+         <obj_property name="ObjectShortName">io_nc_start</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_io_done" type="logic">
+         <obj_property name="ElementShortName">nc_io_done</obj_property>
+         <obj_property name="ObjectShortName">nc_io_done</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_reset" type="logic">
+         <obj_property name="ElementShortName">nc_reset</obj_property>
+         <obj_property name="ObjectShortName">nc_reset</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_warmup" type="logic">
+         <obj_property name="ElementShortName">nc_warmup</obj_property>
+         <obj_property name="ObjectShortName">nc_warmup</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_evaluate" type="logic">
+         <obj_property name="ElementShortName">nc_evaluate</obj_property>
+         <obj_property name="ObjectShortName">nc_evaluate</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_transmit" type="logic">
+         <obj_property name="ElementShortName">nc_transmit</obj_property>
+         <obj_property name="ObjectShortName">nc_transmit</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/api_nc_done" type="logic">
+         <obj_property name="ElementShortName">api_nc_done</obj_property>
+         <obj_property name="ObjectShortName">api_nc_done</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/io_nc_max_per" type="array">
+         <obj_property name="ElementShortName">io_nc_max_per[12:0]</obj_property>
+         <obj_property name="ObjectShortName">io_nc_max_per[12:0]</obj_property>
+         <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/net_ctrlr_i/nc_io_cur_per" type="array">
+         <obj_property name="ElementShortName">nc_io_cur_per[12:0]</obj_property>
+         <obj_property name="ObjectShortName">nc_io_cur_per[12:0]</obj_property>
+         <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group78" type="group">
+      <obj_property name="label">API</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/api_bus" type="array">
+         <obj_property name="ElementShortName">api_bus[1:0]</obj_property>
+         <obj_property name="ObjectShortName">api_bus[1:0]</obj_property>
+         <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/api_vld" type="logic">
+         <obj_property name="ElementShortName">api_vld</obj_property>
+         <obj_property name="ObjectShortName">api_vld</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group206" type="group">
+      <obj_property name="label">N1</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[1].gen_in_neurons.neuron_input_i /api_out_granted" type="logic">
+         <obj_property name="ElementShortName">api_out_granted</obj_property>
+         <obj_property name="ObjectShortName">api_out_granted</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[1].gen_in_neurons.neuron_input_i /api_out_pending" type="logic">
+         <obj_property name="ElementShortName">api_out_pending</obj_property>
+         <obj_property name="ObjectShortName">api_out_pending</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[1].gen_in_neurons.neuron_input_i /v_out" type="array">
+         <obj_property name="ElementShortName">v_out[17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[17:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+         <obj_property name="WaveformStyle">STYLE_ANALOG</obj_property>
+         <obj_property name="CellHeight">100</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[1].gen_in_neurons.neuron_input_i /input_current" type="array">
+         <obj_property name="ElementShortName">input_current[8:0]</obj_property>
+         <obj_property name="ObjectShortName">input_current[8:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group208" type="group">
+      <obj_property name="label">N2</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[2].gen_hidden_neurons.neuron_hidden_i /api_out_granted" type="logic">
+         <obj_property name="ElementShortName">api_out_granted</obj_property>
+         <obj_property name="ObjectShortName">api_out_granted</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[2].gen_hidden_neurons.neuron_hidden_i /api_out_pending" type="logic">
+         <obj_property name="ElementShortName">api_out_pending</obj_property>
+         <obj_property name="ObjectShortName">api_out_pending</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[2].gen_hidden_neurons.neuron_hidden_i /v_out" type="array">
+         <obj_property name="ElementShortName">v_out[17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[17:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+         <obj_property name="WaveformStyle">STYLE_ANALOG</obj_property>
+         <obj_property name="CellHeight">100</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[2].gen_hidden_neurons.neuron_hidden_i /input_current" type="array">
+         <obj_property name="ElementShortName">input_current[8:0]</obj_property>
+         <obj_property name="ObjectShortName">input_current[8:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group210" type="group">
+      <obj_property name="label">N3</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[3].gen_out_neurons.neuron_output_i /v_out" type="array">
+         <obj_property name="ElementShortName">v_out[17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[17:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+         <obj_property name="WaveformStyle">STYLE_ANALOG</obj_property>
+         <obj_property name="CellHeight">100</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[3].gen_out_neurons.neuron_output_i /input_current" type="array">
+         <obj_property name="ElementShortName">input_current[8:0]</obj_property>
+         <obj_property name="ObjectShortName">input_current[8:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[3].gen_out_neurons.neuron_output_i /\gen_w_table.row_idx_match " type="array">
+         <obj_property name="ElementShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+         <obj_property name="ObjectShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group212" type="group">
+      <obj_property name="label">N4</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[4].gen_out_neurons.neuron_output_i /v_out" type="array">
+         <obj_property name="ElementShortName">v_out[17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[17:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+         <obj_property name="WaveformStyle">STYLE_ANALOG</obj_property>
+         <obj_property name="CellHeight">100</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[4].gen_out_neurons.neuron_output_i /input_current" type="array">
+         <obj_property name="ElementShortName">input_current[8:0]</obj_property>
+         <obj_property name="ObjectShortName">input_current[8:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[4].gen_out_neurons.neuron_output_i /\gen_w_table.row_idx_match " type="array">
+         <obj_property name="ElementShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+         <obj_property name="ObjectShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group117" type="group">
+      <obj_property name="label">N5</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[5].gen_out_neurons.neuron_output_i /v_out" type="array">
+         <obj_property name="ElementShortName">v_out[17:0]</obj_property>
+         <obj_property name="ObjectShortName">v_out[17:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+         <obj_property name="WaveformStyle">STYLE_ANALOG</obj_property>
+         <obj_property name="CellHeight">100</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[5].gen_out_neurons.neuron_output_i /input_current" type="array">
+         <obj_property name="ElementShortName">input_current[8:0]</obj_property>
+         <obj_property name="ObjectShortName">input_current[8:0]</obj_property>
+         <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      </wvobject>
+      <wvobject fp_name="/sn_network_top_tb/\gen_dut_cfg.network_DUT /network_i/\genblk1[5].gen_out_neurons.neuron_output_i /\gen_w_table.row_idx_match " type="array">
+         <obj_property name="ElementShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+         <obj_property name="ObjectShortName">\gen_w_table.row_idx_match [1:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group214" type="group">
+      <obj_property name="label">N6</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+   <wvobject fp_name="group68" type="group">
+      <obj_property name="label">N10</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+   <wvobject fp_name="group69" type="group">
+      <obj_property name="label">N11</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+   <wvobject fp_name="group70" type="group">
+      <obj_property name="label">N12</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+   <wvobject fp_name="/sn_network_top_tb/dbg_mon_storage" type="array">
+      <obj_property name="ElementShortName">dbg_mon_storage[4999:0][2:1]</obj_property>
+      <obj_property name="ObjectShortName">dbg_mon_storage[4999:0][2:1]</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+</wave_config>
