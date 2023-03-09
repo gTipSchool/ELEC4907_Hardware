@@ -1,0 +1,134 @@
+`Net Cfg to Hardware Conversion:
+Input Network Cfg File Format (.txt)
+
+High-Level parameters:
+41 Total number of neurons (includes inputs and outputs)
+23 Number of Input neurons
+3 Number of Output neurons
+200 Maximum number of timesteps
+40 Default neuron output step length
+2 Neuron Precision (number of bits)
+1 Weight precision (number of bits) (must be less than neuron precision
+0 dynamic/static weight, const current, and step length selection (0 for weights prior to synthesis, 1 to load weights in after synthesis)
+
+Neuron ID/Address Table: 
+Forward_Output Output
+Left_Output Output
+Right_Output Output
+1 Forward_Output
+10 Subsystem15
+11 Subsystem16
+12 Subsystem17
+13 Subsystem2
+14 Subsystem21
+15 Subsystem22
+16 Subsystem23
+17 Subsystem24
+18 Subsystem25
+19 Subsystem26
+2 Left_Output
+20 Subsystem27
+21 Subsystem28
+22 Subsystem29
+23 Subsystem3
+24 Subsystem30
+25 Subsystem31
+26 Subsystem32
+27 Subsystem33
+28 Subsystem34
+29 Subsystem35
+3 Right_Output
+30 Subsystem36
+31 Subsystem37
+32 Subsystem38
+33 Subsystem39
+34 Subsystem4
+35 Subsystem40
+36 Subsystem44
+37 Subsystem5
+38 Subsystem6
+39 Subsystem7
+4 Subsystem1
+40 Subsystem8
+41 Subsystem9
+5 Subsystem10
+6 Subsystem11
+7 Subsystem12
+8 Subsystem13
+9 Subsystem14
+
+Sources:
+Forward_Output, Subsystem10, 1, 14
+Right_Output, Subsystem10, 2, -30
+Left_Output, Subsystem10, 1, -30
+Subsystem13, Subsystem10, 1, -40
+Subsystem12, Subsystem10, 3, -40
+Subsystem15, Subsystem16, 3, -6
+Subsystem17, Subsystem16, 2, 6
+Subsystem17, Subsystem14, 1, -6
+Subsystem12, Subsystem44, 2, -12
+Subsystem13, Subsystem1, 2, -12
+Subsystem17, Subsystem13, 3, 10
+Subsystem15, Subsystem12, 1, 10
+Subsystem15, Subsystem14, 2, 6
+Subsystem14, Constant6, 1, 1
+Subsystem40, Subsystem9, 2, 9
+Subsystem39, Subsystem25, 3, 9
+Subsystem40, Subsystem21, 3, 9
+Subsystem40, Subsystem8, 1, 9
+Subsystem39, Subsystem23, 1, 9
+Subsystem33, Subsystem27, 2, 9
+Subsystem39, Subsystem24, 2, 9
+Subsystem33, Subsystem26, 3, 9
+Subsystem33, Subsystem22, 1, 9
+Subsystem11, Subsystem34, 3, 9
+Subsystem11, Subsystem3, 2, 9
+Subsystem11, Subsystem32, 1, 9
+Subsystem44, Subsystem33, 3, 12
+Subsystem44, Subsystem39, 2, 12
+Subsystem44, Subsystem40, 1, 12
+Subsystem1, Subsystem38, 1, 12
+Subsystem1, Subsystem7, 2, 12
+Subsystem1, Subsystem11, 3, 12
+Subsystem7, Subsystem31, 3, 9
+Subsystem7, Subsystem30, 2, 9
+Subsystem7, Subsystem2, 1, 9
+Subsystem38, Subsystem37, 3, 9
+Subsystem38, Subsystem36, 2, 9
+Subsystem38, Subsystem35, 1, 9
+Subsystem35, Constant22, 1, 1
+Subsystem2, Constant25, 1, 1
+Subsystem32, Constant18, 1, 1
+Subsystem36, Constant23, 1, 1
+Subsystem34, Constant20, 1, 1
+Subsystem37, Constant24, 1, 1
+Subsystem31, Constant2, 1, 1
+Subsystem3, Constant19, 1, 1
+Subsystem30, Constant1, 1, 1
+Subsystem10, Subsystem28, 2, 14
+Subsystem10, Subsystem5, 3, 14
+Subsystem10, Subsystem6, 5, 14
+Subsystem29, Constant17, 1, 1
+Subsystem10, Subsystem29, 4, 14
+Subsystem28, Constant16, 1, 1
+Subsystem26, Constant15, 1, 1
+Subsystem27, Constant14, 1, 1
+Subsystem23, Constant10, 1, 1
+Subsystem22, Constant13, 1, 1
+Subsystem24, Constant11, 1, 1
+Subsystem25, Constant12, 1, 1
+Subsystem9, Constant8, 1, 1
+Subsystem21, Constant9, 1, 1
+Subsystem8, Constant7, 1, 1
+Subsystem5, Constant4, 1, 1
+Subsystem4, Constant3, 1, 1
+Subsystem6, Constant5, 1, 1
+Subsystem14, Subsystem13, 3, -6
+Subsystem16, Subsystem12, 1, -6
+Subsystem16, Subsystem13, 2, -6
+Subsystem14, Subsystem12, 2, -6
+Left_Output, Subsystem17, 2, 8
+Right_Output, Subsystem15, 1, 8
+Subsystem13, Subsystem44, 3, 12
+Subsystem12, Subsystem1, 1, 12
+Subsystem10, Subsystem4, 1, 14`
