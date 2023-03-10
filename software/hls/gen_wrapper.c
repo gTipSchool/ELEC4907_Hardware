@@ -161,8 +161,11 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     
     char* infilename = argv[1];
     FILE *infile = fopen(infilename,"r+t");
-    if (infile == NULL) printf("Error in gen_wrapper.c: Can't open %s\n",infilename);
-    
+    if (infile == NULL){
+        printf("Error in gen_wrapper.c: Can't open %s\n",infilename);
+        fclose(infile);
+        return 0;
+    }
     // Variable Declarations:
     //------------------------
     // High level params:
@@ -219,6 +222,7 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 }
                 if (strstrip(line,' ')==false){
                     printf("Error parsing high level params in %s: unexpected content on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 file_params[param_cnt] = atoi(line);
@@ -233,12 +237,14 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 token = strtok(line," ");
                 if (token==NULL){
                     printf("Error parsing lookup table in %s: not enough tokens on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 neurons[neur_cnt].idx = atoi(token);
                 token = strtok(NULL,"\n");
                 if (token==NULL){
                     printf("Error parsing lookup table in %s: not enough tokens on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 strcpy(neurons[neur_cnt].id,token);
@@ -250,12 +256,14 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 token = strtok(line," ");
                 if (token==NULL){
                     printf("Error parsing weight list in %s: not enough tokens on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 cur_dest_idx = atoi(token);
                 token = strtok(NULL," ");
                 if (token==NULL){
                     printf("Error parsing weight list in %s: not enough tokens on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 // Check if the source is "Constant", indicating that this is a constant weight.
@@ -264,6 +272,7 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 token = strtok(NULL,"\n");
                 if (token==NULL){
                     printf("Error parsing weight list in %s: not enough tokens on line %d.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 cur_weight = atof(token);
@@ -271,11 +280,13 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 cur_dest_idx = findNeur(neurons,rtl_params.l_num_neurons,cur_dest_idx)
                 if (cur_dest_idx==-1){
                     printf("Error parsing weight list in %s: Destination neuron on line %d does not exist in the lookup table.\n",infilename,line_cnt);
+                    fclose(infile);
                     return 0;
                 }
                 addWeight(neurons[cur_dest_idx],cur_src_idx,cur_weight,rtl_params.l_table_weight_precision);
         }
     } while true;
+    fclose(infile);
     // Error check:
     if (parse_step != c_last_parse_step){
         printf("Error parsing %s: File is incomplete.\n",infilename);
@@ -286,9 +297,9 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     //--------------------------------------------
     // Calculate max num rows by iterating through all the neurons and finding the max 
     calcRemParams(neurons,rtl_params);
-    //L_TABLE_NUM_ROWS_ARRAY
-    //L_NEUR_CONST_CURRENT_ARRAY
-    //L_NEUR_CNTR_VAL_ARRAY
+    //L_TABLE_NUM_ROWS_ARRAY can be found by looping through neurons.
+    //L_NEUR_CONST_CURRENT_ARRAY can be done by looping through neurons.
+    //L_NEUR_CNTR_VAL_ARRAY for now just set to the default value.
 
     // Generating the top-level wrapper:
     //-----------------------------------
@@ -299,7 +310,7 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     }
     fprintf(outfile,"/* %s:\n *\tGenerated RTL wrapper for sn_network_top module.\n"
                             " *\tThe configured top-level parameters are calculated, \n"
-                            " *\tDO NOT MODIFY.\n */\n");
+                            " *\tDO NOT MODIFY.\n */\n",outfilename_short);
     fprintf(outfile,"module %s\n",outfilename_short);
     fprintf(outfile,
         "\t(\n"
@@ -332,14 +343,43 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     fprintf(outfile,"\n\tlocalparam L_UART_CLKS_PER_BIT = %d;\n",rtl_params.l_uart_clks_per_bit);
     fprintf(outfile,"\tlocalparam L_UART_BITS_PER_PKT = %d;\n",rtl_params.l_uart_bits_per_pkt);
     fprintf(outfile,"\tlocalparam L_PROT_WATCHDOG_TIME = %d;\n",rtl_params.l_prot_watchdog_time);
-    // TODO
     //L_TABLE_NUM_ROWS_ARRAY
+    fprintf(outfile,"\tlocalparam L_TABLE_NUM_ROWS_ARRAY = {");
+    for (int i=rtl_params.l_num_neurons-1; i>=rtl_params.l_num_inputs; i++){
+        fprintf(outfile,"%s",neurons[findNeur(neurons,rtl_params.l_num_neurons,i)].num_weights);
+        if (i!=rtl_params.l_num_inputs) fprintf(outfile,",");
+    }
+    fprintf(outfile,"};\n");
     //L_NEUR_CONST_CURRENT_ARRAY
+    fprintf(outfile,"\tlocalparam L_NEUR_CONST_CURRENT_ARRAY = {");
+    for (int i=rtl_params.l_num_neurons-1; i>=rtl_params.l_num_inputs; i++){
+        fprintf(outfile,"%s",neurons[findNeur(neurons,rtl_params.l_num_neurons,i)].const_current);
+        if (i!=rtl_params.l_num_inputs) fprintf(outfile,",");
+    }
+    fprintf(outfile,"};\n");
     //L_NEUR_CNTR_VAL_ARRAY
+    fprintf(outfile,"\tlocalparam L_NEUR_CNTR_VAL_ARRAY = {");
+    for (int i=rtl_params.l_num_neurons-1; i>=0; i++){
+        fprintf(outfile,"%s",rtl_params.l_dflt_cntr_val); // FIXME if at some point all neurons have differing step lengths.
+        if (i!=0) fprintf(outfile,",");
+    }
+    fprintf(outfile,"};\n\n");
 
     // Weight contents:
+    fprintf(outfile,"\tlocalparam L_CTC_PER_NEUR_BW = L_TABLE_MAX_NUM_ROWS*(L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW);\n");
     fprintf(outfile,"\tlogic [L_NUM_NEURONS-L_NUM_INPUTS:1] [L_TABLE_MAX_NUM_ROWS-1:0] [L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW-1:0] cfg_table_contents;\n");
-    // TODO
+    fprintf(outfile,"\tassign cfg_table_contents = {\n");
+    Weight* cur_weight;
+    for (int i=rtl_params.l_num_neurons-1; i>=rtl_params.l_num_inputs; i++){
+        cur_weight = neurons[i].first_weight;
+        fprintf(outfile,"\t\tL_CTC_PER_NEUR_BW'({\n");
+        while (cur_weight != NULL){
+            fprintf(outfile,"\t\t\tL_TABLE_IDX_BW'(%d),L_TABLE_WEIGHT_BW'(%d)",cur_weight.assoc_neuron,cur_weight.value);
+            if (cur_weight!=NULL) fprintf(outfile,",\n");
+        }
+        if (i!=rtl_params.l_num_inputs) fprintf(outfile,"}),\n");
+        else fprintf(outfile,"})};\n");
+    }
 
     // network_top_cfg Instantiation:
     fprintf(outfile,
@@ -378,10 +418,10 @@ bool strcmpl(const char* str1, const char* str2, int limit){
         "\t);\n");
     // End of the module:
     fprintf(outfile,"\nendmodule");
+    fclose(outfile);
 
     // Create Testbench file:
-    // TODO
 
     // Free the allocated memory for the weights in the neuron list and then the neurons themselves:
-    // TODO
+
  }
