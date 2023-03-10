@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <stdbool.h>
+#include <math.h>
 
 // Data Structures:
 //==================
@@ -29,7 +30,7 @@ struct HLParams {
     int l_table_max_num_rows;
     int l_table_dflt_num_rows;
     int l_neur_current_bw;
-    //int p_neur_step_cntr_bw;
+    int l_neur_step_cntr_bw;
     int l_uart_clks_per_bit;
     int l_uart_bits_per_pkt;
     long l_prot_watchdog_time;
@@ -46,6 +47,7 @@ struct HLParams {
     int idx;
     char id [30];
     int num_weights;
+    int const_current;
     Weight* first_weight;
  };
 
@@ -53,17 +55,17 @@ struct HLParams {
 //============
 void assignParams(struct HLParams params, int param_arr[]){
     params.l_num_neurons = param_arr[0];
-    params.l_num_inputs = param_arr[1];;
-    params.l_num_outputs = param_arr[2];;
-    params.l_max_num_periods = param_arr[3];;
+    params.l_num_inputs = param_arr[1];
+    params.l_num_outputs = param_arr[2];
+    params.l_max_num_periods = param_arr[3];
     params.l_dflt_cntr_val = param_arr[4];
-    params.l_neur_model_precision = param_arr[5];;
-    params.l_table_weight_precision = param_arr[6];;
+    params.l_neur_model_precision = param_arr[5];
+    params.l_table_weight_precision = param_arr[6];
     params.l_table_weight_bw = 9;
     params.l_table_max_num_rows = 0// TODO calculated in another func in a later step;
     params.l_table_dflt_num_rows = 0; // TODO ^
     params.l_neur_current_bw = 0; // TODO ^
-    //params.p_neur_step_cntr_bw = ;
+    params.l_neur_step_cntr_bw = 0;
     params.l_uart_clks_per_bit = 87;
     params.l_uart_bits_per_pkt = 10;
     params.l_prot_watchdog_time = params.l_uart_clks_per_bit * params.l_uart_bits_per_pkt * 1000000;
@@ -75,16 +77,60 @@ int findNeur(struct Neuron neur_arr[], int num_neurons, int dest_idx){
     for (int i=0; i<num_neurons; i++) if (neur_arr[i].idx==dest_idx) return i;
     return -1;
 }
-void addWeight(struct Neuron* neur, int src_idx, double value){
-    struct Weight* cur_weight = neur.first_weight;
-    // Find the end of the list.
-    while (cur_weight != NULL) cur_weight = cur_weight.next_weight;
-    // Create the weight and add it to the list.
-    cur_weight = (Weight*)malloc(sizeof(Weight));
-    cur_weight->assoc_neuron = src_idx;
-    cur_weight->value = value;
-    cur_weight->next_weight = NULL;
-    neur->num_weights++;
+void addWeight(struct Neuron* neur, int src_idx, double value, int precision){
+    if (src_icx==0){
+        // Not a weight, but a constant current.
+        neur->const_current = (int)(value * 2^precision);
+    }
+    else {
+        // Normal weight.
+        struct Weight* cur_weight = neur.first_weight;
+        // Find the last weight in the neuron's weight list.
+        while (cur_weight != NULL) cur_weight = cur_weight.next_weight;
+        // Create the weight and add it to the list.
+        cur_weight = (Weight*)malloc(sizeof(Weight));
+        cur_weight->assoc_neuron = src_idx;
+        cur_weight->value = (int)(value * 2^precision); // Convert it to an int with the specified fixed point precision.
+        cur_weight->next_weight = NULL;
+        neur->num_weights++;
+    }
+    return;
+}
+void calcRemParams(struct Neuron neur_arr[], struct HLParams params){
+    int max_rows=0;
+    int max_weight=0;
+    int spec_max_weight;
+    int max_const_current=0;
+    int spec_max_const_current;
+    int wc_current=0; // This calculation will not produce the actual worst case because it uses sum of absolute weight/current values.
+    int spec_wc_current;
+    struct Neuron* cur_neuron;
+    struct Weight* cur_weight;
+
+    for (int i=0; i<params.l_num_neurons; i++){
+        cur_neuron = neur_arr[i];
+        // Update max const current.
+        spec_max_const_current = abs(cur_neuron->const_current);
+        if (spec_max_const_current > max_const_current) max_const_current = spec_max_const_current;
+        spec_wc_current = spec_max_const_current;
+        // Update the max num weights.
+        if (cur_neuron->num_weights > max_rows) max_rows = cur_neuron->num_weights;
+        // Update the maximum weight value and worst case current.
+        cur_weight = cur_neuron->const_current;
+        while (cur_weight != NULL){
+            spec_max_weight = abs(cur_weight->value);
+            if (spec_max_weight > max_weight) max_weight = spec_max_weight;
+            spec_wc_current += spec_max_weight;
+            cur_weight = cur_weight->next_weight;
+        }
+        // Update worst-case current.
+        if (spec_wc_current > wc_current) wc_current = spec_wc_current;
+    }
+    // Update params:
+    params.l_table_max_num_rows = max_rows;
+    params.l_table_dflt_num_rows = 0;
+    params.l_table_weight_bw = (int)ceil(log2(max_weight));
+    params.l_neur_current_bw = (int)ceil(log2(wc_current));
     return;
 }
 bool strcmpl(const char* str1, const char* str2, int limit){
@@ -140,7 +186,10 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     int neur_cnt=0;
 
     // Output file:
-    char outfilename [] = "sn_network_top_wrapper.sv";
+    // Module name
+    char outfilename_short [] = "sn_network_top_wrapper_generated";
+    // File name
+    char outfilename [] = strcat(strcpy(outfilename_short),".sv");
 
     // Parsing the input file:
     //-------------------------
@@ -224,7 +273,7 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                     printf("Error parsing weight list in %s: Destination neuron on line %d does not exist in the lookup table.\n",infilename,line_cnt);
                     return 0;
                 }
-                addWeight(neurons[cur_dest_idx],cur_src_idx,cur_weight);
+                addWeight(neurons[cur_dest_idx],cur_src_idx,cur_weight,rtl_params.l_table_weight_precision);
         }
     } while true;
     // Error check:
@@ -233,10 +282,13 @@ bool strcmpl(const char* str1, const char* str2, int limit){
         return 0;
     }
 
-    // Calculate the rest of the detected parameters:
-    // max_table_rows
-    // weight_bw
-    // current_bw
+    // Calculate the remaining of RTL parameters:
+    //--------------------------------------------
+    // Calculate max num rows by iterating through all the neurons and finding the max 
+    calcRemParams(neurons,rtl_params);
+    //L_TABLE_NUM_ROWS_ARRAY
+    //L_NEUR_CONST_CURRENT_ARRAY
+    //L_NEUR_CNTR_VAL_ARRAY
 
     // Generating the top-level wrapper:
     //-----------------------------------
@@ -245,30 +297,91 @@ bool strcmpl(const char* str1, const char* str2, int limit){
         printf("Error opening output file %s\n", outfilename);
         return 0;
     }
+    fprintf(outfile,"/* %s:\n *\tGenerated RTL wrapper for sn_network_top module.\n"
+                            " *\tThe configured top-level parameters are calculated, \n"
+                            " *\tDO NOT MODIFY.\n */\n");
+    fprintf(outfile,"module %s\n",outfilename_short);
     fprintf(outfile,
-        "module sn_network_top_wrapper\n"
-        "(\n"
-        " // Top clock and reset.\n"
-        " input clk_in1_p,\n"
-        " input clk_in1_n,\n"
-        " input rst,\n"
-        " // UART signals\n"
-        " input rx_input,\n"
-        " output tx_output\n"
-        ");\n"
+        "\t(\n"
+        "\t // Top clock and reset.\n"
+        "\t input clk_in1_p,\n"
+        "\t input clk_in1_n,\n"
+        "\t input rst,\n"
+        "\t // UART signals\n"
+        "\t input rx_input,\n"
+        "\t output tx_output\n"
+        "\t);\n"
         "\n"
-        "// Declarations\n"
-        "//-------------------\n");
-    fprintf(outfile,"localparam L_NEUR_MODEL_CFG = %d",rtl_params.l_neur_model_cfg);
-    fprintf(outfile,"localparam L_NUM_NEURONS = %d",rtl_params.l_num_neurons);
-    fprintf(outfile,"localparam L_NUM_INPUTS = %d",rtl_params.l_num_inputs);
-    fprintf(outfile,"localparam L_NUM_OUTPUTS = %d",rtl_params.l_num_outputs);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_BW = %d",rtl_params.l_table_weight_bw);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_PRECISION = %d",rtl_params.l_table_weight_precision);
-    fprintf(outfile,"localparam L_TABLE_MAX_NUM_ROWS = %d",rtl_params.l_table_max_num_rows);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_BW = %d",rtl_params.l_table_weight_bw);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_BW = %d",rtl_params.l_table_weight_bw);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_BW = %d",rtl_params.l_table_weight_bw);
-    fprintf(outfile,"localparam L_TABLE_WEIGHT_BW = %d",rtl_params.l_table_weight_bw);
+        "\t// Declarations\n"
+        "\t//-------------------\n");
+    fprintf(outfile,"\tlocalparam L_NEUR_MODEL_CFG = %d;\n",rtl_params.l_neur_model_cfg);
+    fprintf(outfile,"\tlocalparam L_NUM_NEURONS = %d;\n",rtl_params.l_num_neurons);
+    fprintf(outfile,"\tlocalparam L_NUM_INPUTS = %d;\n",rtl_params.l_num_inputs);
+    fprintf(outfile,"\tlocalparam L_NUM_OUTPUTS = %d;\n",rtl_params.l_num_outputs);
+    fprintf(outfile,"\tlocalparam L_TABLE_WEIGHT_BW = %d;\n",rtl_params.l_table_weight_bw);
+    fprintf(outfile,"\tlocalparam L_TABLE_WEIGHT_PRECISION = %d;\n",rtl_params.l_table_weight_precision);
+    fprintf(outfile,"\tlocalparam L_TABLE_MAX_NUM_ROWS = %d;\n",rtl_params.l_table_max_num_rows);
+    fprintf(outfile,"\tlocalparam L_TABLE_DFLT_NUM_ROWS = %d;\n",rtl_params.l_table_dflt_num_rows);
+    fprintf(outfile,"\tlocalparam L_NEUR_CURRENT_BW = %d;\n",rtl_params.l_neur_current_bw);
+    fprintf(outfile,"\tlocalparam L_NEUR_MODEL_PRECISION = %d;\n",rtl_params.l_neur_model_precision);
+    fprintf(outfile,"\tlocalparam L_NEUR_HIGH_PREC_EN = %d;\n",rtl_params.l_neur_izh_high_prec_en);
+    fprintf(outfile,"\tlocalparam L_DFLT_CNTR_VAL = %d;\n",rtl_params.l_dflt_cntr_val);
+    fprintf(outfile,"\tlocalparam L_NEUR_STEP_CNTR_BW = %d;\n",rtl_params.l_neur_step_cntr_bw);
+    fprintf(outfile,"\tlocalparam L_MAX_NUM_PERIODS = %d;\n",rtl_params.l_max_num_periods);
+    fprintf(outfile,"\tlocalparam L_TABLE_IDX_BW = $clog2(L_NUM_NEURONS-L_NUM_OUTPUTS+1);\n");
+    fprintf(outfile,"\n\tlocalparam L_UART_CLKS_PER_BIT = %d;\n",rtl_params.l_uart_clks_per_bit);
+    fprintf(outfile,"\tlocalparam L_UART_BITS_PER_PKT = %d;\n",rtl_params.l_uart_bits_per_pkt);
+    fprintf(outfile,"\tlocalparam L_PROT_WATCHDOG_TIME = %d;\n",rtl_params.l_prot_watchdog_time);
+    // TODO
+    //L_TABLE_NUM_ROWS_ARRAY
+    //L_NEUR_CONST_CURRENT_ARRAY
+    //L_NEUR_CNTR_VAL_ARRAY
 
+    // Weight contents:
+    fprintf(outfile,"\tlogic [L_NUM_NEURONS-L_NUM_INPUTS:1] [L_TABLE_MAX_NUM_ROWS-1:0] [L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW-1:0] cfg_table_contents;\n");
+    // TODO
+
+    // network_top_cfg Instantiation:
+    fprintf(outfile,
+        "\tsn_network_top_cfg #(\n"
+        "\t\t.P_NUM_NEURONS(L_NUM_NEURONS),\n"
+        "\t\t.P_NUM_INPUTS(L_NUM_INPUTS),\n"
+        "\t\t.P_NUM_OUTPUTS(L_NUM_OUTPUTS),\n"
+        "\t\t.P_TABLE_NUM_ROWS_ARRAY(L_TABLE_NUM_ROWS_ARRAY),\n"
+        "\t\t.P_TABLE_MAX_NUM_ROWS(L_TABLE_MAX_NUM_ROWS),\n"
+        "\t\t.P_NEUR_CONST_CURRENT_ARRAY(L_NEUR_CONST_CURRENT_ARRAY),\n"
+        "\t\t.P_NEUR_CNTR_VAL_ARRAY(L_NEUR_CNTR_VAL_ARRAY),\n"
+        "\t\t.P_TABLE_DFLT_NUM_ROWS(L_TABLE_DFLT_NUM_ROWS),\n"
+        "\t\t.P_TABLE_WEIGHT_BW(L_TABLE_WEIGHT_BW),\n"
+        "\t\t.P_TABLE_WEIGHT_PRECISION(L_TABLE_WEIGHT_PRECISION),\n"
+        "\t\t.P_NEUR_CURRENT_BW(L_NEUR_CURRENT_BW),\n"
+        "\t\t.P_NEUR_MODEL_CFG(L_NEUR_MODEL_CFG),\n"
+        "\t\t.P_NEUR_MODEL_PRECISION(L_NEUR_MODEL_PRECISION),\n"
+        "\t\t.P_NEUR_IZH_HIGH_PREC_EN(L_NEUR_IZH_HIGH_PREC_EN),\n"
+        "\t\t.P_DFLT_CNTR_VAL(L_DFLT_CNTR_VAL),\n"
+        "\t\t.P_NEUR_STEP_CNTR_BW(L_NEUR_STEP_CNTR_BW),\n"
+        "\t\t.P_MAX_NUM_PERIODS(L_MAX_NUM_PERIODS),\n"
+        "\t\t.P_UART_CLKS_PER_BIT(L_UART_CLKS_PER_BIT),\n"
+        "\t\t.P_UART_BITS_PER_PKT(L_UART_BITS_PER_PKT),\n"
+        "\t\t.P_PROT_WATCHDOG_TIME(L_PROT_WATCHDOG_TIME),\n"
+        "\t\t.P_CLK_GEN_EN(1)\n"
+        "\t\t)\n"
+        "\tnetwork_i (\n"
+        "\t\t.clk_in1_p(clk_in1_p),\n"
+        "\t\t.clk_in1_n(clk_in1_n),\n"
+        "\t\t.rst(rst),\n"
+        "\t\t// UART Interface\n"
+        "\t\t.rx_input(rx_input),\n"
+        "\t\t.tx_output(tx_output),\n"
+        "\t\t// CFG\n"
+        "\t\t.cfg_table_contents(cfg_table_contents)\n"
+        "\t);\n");
+    // End of the module:
+    fprintf(outfile,"\nendmodule");
+
+    // Create Testbench file:
+    // TODO
+
+    // Free the allocated memory for the weights in the neuron list and then the neurons themselves:
+    // TODO
  }
