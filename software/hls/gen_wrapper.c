@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <stdbool.h>
 #include <math.h>
+#include <string.h>
 
 // Data Structures:
 //==================
@@ -38,6 +39,7 @@ struct HLParams {
     bool l_neur_izh_high_prec_en;
 };
  typedef struct Neuron Neuron;
+ typedef struct Weight Weight;
  struct Weight {
     int assoc_neuron;
     int value;
@@ -53,50 +55,76 @@ struct HLParams {
 
 // Functions:
 //============
-void assignParams(struct HLParams params, int param_arr[]){
-    params.l_num_neurons = param_arr[0];
-    params.l_num_inputs = param_arr[1];
-    params.l_num_outputs = param_arr[2];
-    params.l_max_num_periods = param_arr[3];
-    params.l_dflt_cntr_val = param_arr[4];
-    params.l_neur_model_precision = param_arr[5];
-    params.l_table_weight_precision = param_arr[6];
-    params.l_table_weight_bw = 9;
-    params.l_table_max_num_rows = 0// TODO calculated in another func in a later step;
-    params.l_table_dflt_num_rows = 0; // TODO ^
-    params.l_neur_current_bw = 0; // TODO ^
-    params.l_neur_step_cntr_bw = 0;
-    params.l_uart_clks_per_bit = 87;
-    params.l_uart_bits_per_pkt = 10;
-    params.l_prot_watchdog_time = params.l_uart_clks_per_bit * params.l_uart_bits_per_pkt * 1000000;
-    params.l_neur_model_cfg = 0; //0 for izh, 1 for i&f
-    params.l_neur_izh_high_prec_en = 0;
+int assignParams(struct HLParams* params, int param_arr[]){
+    struct HLParams params_cpy;
+    params_cpy.l_num_neurons = param_arr[0];
+    params_cpy.l_num_inputs = param_arr[1];
+    params_cpy.l_num_outputs = param_arr[2];
+    params_cpy.l_max_num_periods = param_arr[3];
+    params_cpy.l_dflt_cntr_val = param_arr[4];
+    params_cpy.l_neur_model_precision = param_arr[5];
+    params_cpy.l_table_weight_precision = param_arr[6];
+    params_cpy.l_table_weight_bw = 9;
+    params_cpy.l_table_max_num_rows = 0;// TODO calculated in another func in a later step;
+    params_cpy.l_table_dflt_num_rows = 0; // TODO ^
+    params_cpy.l_neur_current_bw = 0; // TODO ^
+    params_cpy.l_neur_step_cntr_bw = 0;
+    params_cpy.l_uart_clks_per_bit = 87;
+    params_cpy.l_uart_bits_per_pkt = 10;
+    params_cpy.l_prot_watchdog_time = params_cpy.l_uart_clks_per_bit * params_cpy.l_uart_bits_per_pkt * 1000000;
+    params_cpy.l_neur_model_cfg = 0; //0 for izh, 1 for i&f
+    params_cpy.l_neur_izh_high_prec_en = 0;
+    *params = params_cpy;
+    return 0;
 }
 int findNeur(struct Neuron neur_arr[], int num_neurons, int dest_idx){
     // Search the list for the destination neuron and return the index. If it can't be found, return -1.
     for (int i=0; i<num_neurons; i++) if (neur_arr[i].idx==dest_idx) return i;
     return -1;
 }
-void addWeight(struct Neuron* neur, int src_idx, double value, int precision){
-    if (src_icx==0){
-        // Not a weight, but a constant current.
-        neur->const_current = (int)(value * 2^precision);
+void printNeur(struct Neuron neur_arr[], int num_neurons, bool print_weights){
+    struct Weight* cur_weight;
+    printf("\nIdentified Network Stucture:\n");
+    for (int i=0; i<num_neurons; i++){
+        printf("%s: id=%d\n",neur_arr[i].id,neur_arr[i].idx);
+        if (print_weights){
+            printf("\tConstant Current: %d\n", neur_arr[i].const_current);
+            cur_weight=neur_arr[i].first_weight;
+            printf("\tWeights: %d\n", neur_arr[i].num_weights);
+            while (cur_weight!=NULL){
+                printf("\t\tValue: %d, Source: %s (idx=%d)\n",
+                cur_weight->value, 
+                neur_arr[findNeur(neur_arr,num_neurons,cur_weight->assoc_neuron)].id);
+            }
+        }
     }
-    else {
+}
+void addWeight(struct Neuron* neur, int src_idx, double value, int precision){
+    if (src_idx==0){
+        // Not a weight, but a constant current.
+        neur->const_current = (int)(value * pow(2,(double) precision));
+    }
+    else {/*
         // Normal weight.
-        struct Weight* cur_weight = neur.first_weight;
+        Weight* cur_weight;
         // Find the last weight in the neuron's weight list.
-        while (cur_weight != NULL) cur_weight = cur_weight.next_weight;
+        if (neur->first_weight == NULL){
+            neur->first_weight = (Weight*) malloc(sizeof(Neuron));
+            cur_weight = neur->first_weight;
+        } else {
+            cur_weight = neur->first_weight;
+            while (cur_weight->next_weight != NULL) cur_weight = cur_weight->next_weight;
+            cur_weight->next_weight = (Weight*) malloc(sizeof(Weight));
+        }
         // Create the weight and add it to the list.
-        cur_weight = (Weight*)malloc(sizeof(Weight));
         cur_weight->assoc_neuron = src_idx;
-        cur_weight->value = (int)(value * 2^precision); // Convert it to an int with the specified fixed point precision.
-        cur_weight->next_weight = NULL;
+        cur_weight->value = (int)(value * pow(2,(double) precision)); // Convert it to an int with the specified fixed point precision.
+        cur_weight->next_weight = NULL;*/
         neur->num_weights++;
     }
     return;
 }
-void calcRemParams(struct Neuron neur_arr[], struct HLParams params){
+void calcRemParams(struct Neuron neur_arr[], struct HLParams* params){
     int max_rows=0;
     int max_weight=0;
     int spec_max_weight;
@@ -107,8 +135,8 @@ void calcRemParams(struct Neuron neur_arr[], struct HLParams params){
     struct Neuron* cur_neuron;
     struct Weight* cur_weight;
 
-    for (int i=0; i<params.l_num_neurons; i++){
-        cur_neuron = neur_arr[i];
+    for (int i=0; i<params->l_num_neurons; i++){
+        cur_neuron = &(neur_arr[i]);
         // Update max const current.
         spec_max_const_current = abs(cur_neuron->const_current);
         if (spec_max_const_current > max_const_current) max_const_current = spec_max_const_current;
@@ -116,7 +144,7 @@ void calcRemParams(struct Neuron neur_arr[], struct HLParams params){
         // Update the max num weights.
         if (cur_neuron->num_weights > max_rows) max_rows = cur_neuron->num_weights;
         // Update the maximum weight value and worst case current.
-        cur_weight = cur_neuron->const_current;
+        cur_weight = cur_neuron->first_weight;
         while (cur_weight != NULL){
             spec_max_weight = abs(cur_weight->value);
             if (spec_max_weight > max_weight) max_weight = spec_max_weight;
@@ -127,10 +155,10 @@ void calcRemParams(struct Neuron neur_arr[], struct HLParams params){
         if (spec_wc_current > wc_current) wc_current = spec_wc_current;
     }
     // Update params:
-    params.l_table_max_num_rows = max_rows;
-    params.l_table_dflt_num_rows = 0;
-    params.l_table_weight_bw = (int)ceil(log2(max_weight));
-    params.l_neur_current_bw = (int)ceil(log2(wc_current));
+    params->l_table_max_num_rows = max_rows;
+    params->l_table_dflt_num_rows = 0;
+    params->l_table_weight_bw = (int)ceil(log2(max_weight));
+    params->l_neur_current_bw = (int)ceil(log2(wc_current));
     return;
 }
 bool strcmpl(const char* str1, const char* str2, int limit){
@@ -141,10 +169,10 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     return true;
  }
  bool strstrip(char* str, const char delimiter){
-    for (int i=0; src; i++){
-        if (*(src+i)=='\0') return false;
-        else if (*(src+i)==delimiter){
-            *(src+i)='\0'; return true;
+    for (int i=0; str; i++){
+        if (*(str+i)=='\0') return false;
+        else if (*(str+i)==delimiter){
+            *(str+i)='\0'; return true;
         }
     }
  }
@@ -154,18 +182,21 @@ bool strcmpl(const char* str1, const char* str2, int limit){
  int main(int argc, char *argv[]){
     // Error checking:
     //-----------------
-    if (argc!=2){
+    /*if (argc!=2){
         printf("Error in gen_wrapper.c: No network configuration file specified.\n");
         return 0;
-    }
+    }*/
     
-    char* infilename = argv[1];
+    printf("Attempting to open input file\n");
+    char infilename [] = "./net_cfg_template2.txt";//argv[1];
     FILE *infile = fopen(infilename,"r+t");
     if (infile == NULL){
         printf("Error in gen_wrapper.c: Can't open %s\n",infilename);
         fclose(infile);
         return 0;
     }
+    printf("Opened %s\n",infilename);
+
     // Variable Declarations:
     //------------------------
     // High level params:
@@ -186,38 +217,49 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     double cur_weight = 0;
     // Neuron list:
     Neuron* neurons;
+    Weight* w;
     int neur_cnt=0;
 
     // Output file:
     // Module name
     char outfilename_short [] = "sn_network_top_wrapper_generated";
     // File name
-    char outfilename [] = strcat(strcpy(outfilename_short),".sv");
+    char outfilename [30];
+    strcpy(outfilename,outfilename_short);
+    strcat(outfilename,".sv");
 
+    printf("Starting to parse %s\n",infilename);
     // Parsing the input file:
     //-------------------------
     do {
         // Get a line from the file:
-        if (fgets(line, sizeof(line), infile) == 0) { 
-            // EOF?
-            if (feof(inFile)) break;
-        }
+        if (fgets(line, sizeof(line), infile) == NULL) break;
         line_cnt++;
 
         // Conditionally do something with the line:
         switch (parse_step){
             case 0: // Search lines until an identifier is found that starts a parse step:
-                if (strcmpl(line,"High-level",10)) parse_step = 1;
-                else if (strcmpl(line,"Neuron ID/Address",10)) parse_step = 2;
-                else if (strcmpl(line,"Sources",7)) parse_step = 3;
+                if (strcmpl(line,"High-Level",10)){
+                    parse_step = 1;
+                    printf("Step 1: Starting to parse high-level params.\n=========================================\n");
+                } else if (strcmpl(line,"Neuron ID/Address",10)){
+                    parse_step = 2;
+                    printf("Step 2: Starting to parse neuron ID look-up table.\n=========================================\n");
+                } else if (strcmpl(line,"Sources",7)){
+                    parse_step = 3;
+                    printf("Step 3: Starting to parse weights.\n=========================================\n");
+                }
+                break;
 
             case 1: // Collect all high-level params:
+                printf("Step 1: parsing line %d\n",line_cnt);
                 // Check if we've reached the end of the params section (empty line).
                 if (*line=='\n'){
                     // Setup for next step: populate rtl_params struct and create array of neuron.
-                    assignParams(rtl_params,file_params);
-                    neurons = malloc(rtl_params.l_num_neurons * sizeof(Neuron));
+                    assignParams(&rtl_params,file_params);
+                    neurons = (Neuron*) malloc(rtl_params.l_num_neurons * sizeof(Neuron));
                     parse_step = 0;
+                    printf("Finished Step 1.\n");
                     continue;
                 }
                 if (strstrip(line,' ')==false){
@@ -227,11 +269,15 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 }
                 file_params[param_cnt] = atoi(line);
                 param_cnt++;
+                break;
             
             case 2: // Create a lookup table for neuron IDs and indices:
+                printf("Step 2: parsing line %d\n",line_cnt);
                 // Check if we've reached the end of the LUT section (empty line).
                 if (*line=='\n'){
                     parse_step = 0;
+                    printf("Finished Step 2.\n");
+                    printNeur(neurons,rtl_params.l_num_neurons, false);
                     continue;
                 }
                 token = strtok(line," ");
@@ -251,8 +297,10 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 neurons[neur_cnt].first_weight = NULL;
                 neurons[neur_cnt].num_weights = 0;
                 neur_cnt++;
+                break;
                 
             case 3: // Populate the netlist datastructure:
+                printf("Step 3: parsing line %d\n",line_cnt);
                 token = strtok(line," ");
                 if (token==NULL){
                     printf("Error parsing weight list in %s: not enough tokens on line %d.\n",infilename,line_cnt);
@@ -277,34 +325,39 @@ bool strcmpl(const char* str1, const char* str2, int limit){
                 }
                 cur_weight = atof(token);
                 // Now find the dest neuron and add the weight.
-                cur_dest_idx = findNeur(neurons,rtl_params.l_num_neurons,cur_dest_idx)
+                cur_dest_idx = findNeur(neurons,rtl_params.l_num_neurons,cur_dest_idx);
                 if (cur_dest_idx==-1){
                     printf("Error parsing weight list in %s: Destination neuron on line %d does not exist in the lookup table.\n",infilename,line_cnt);
                     fclose(infile);
                     return 0;
                 }
-                addWeight(neurons[cur_dest_idx],cur_src_idx,cur_weight,rtl_params.l_table_weight_precision);
+                addWeight(&neurons[cur_dest_idx],cur_src_idx,cur_weight,rtl_params.l_table_weight_precision);
+                break;
         }
-    } while true;
+    } while (true);
+    printNeur(neurons,rtl_params.l_num_neurons,true);
     fclose(infile);
     // Error check:
     if (parse_step != c_last_parse_step){
         printf("Error parsing %s: File is incomplete.\n",infilename);
         return 0;
     }
+    printf("Finished Step 3.\n");
 
     // Calculate the remaining of RTL parameters:
     //--------------------------------------------
+    printf("Calculating remaining RTL parameters and finishing population of the Network datastructure.\n");
     // Calculate max num rows by iterating through all the neurons and finding the max 
-    calcRemParams(neurons,rtl_params);
+    calcRemParams(neurons,&rtl_params);
     //L_TABLE_NUM_ROWS_ARRAY can be found by looping through neurons.
     //L_NEUR_CONST_CURRENT_ARRAY can be done by looping through neurons.
     //L_NEUR_CNTR_VAL_ARRAY for now just set to the default value.
 
     // Generating the top-level wrapper:
     //-----------------------------------
+    printf("Starting generation of RTL wrapper.\n");
     FILE* outfile = fopen(outfilename, "w");
-    if (f == NULL){
+    if (outfile == NULL){
         printf("Error opening output file %s\n", outfilename);
         return 0;
     }
@@ -369,13 +422,13 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     fprintf(outfile,"\tlocalparam L_CTC_PER_NEUR_BW = L_TABLE_MAX_NUM_ROWS*(L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW);\n");
     fprintf(outfile,"\tlogic [L_NUM_NEURONS-L_NUM_INPUTS:1] [L_TABLE_MAX_NUM_ROWS-1:0] [L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW-1:0] cfg_table_contents;\n");
     fprintf(outfile,"\tassign cfg_table_contents = {\n");
-    Weight* cur_weight;
+    struct Weight* cur_w;
     for (int i=rtl_params.l_num_neurons-1; i>=rtl_params.l_num_inputs; i++){
-        cur_weight = neurons[i].first_weight;
+        cur_w = neurons[i].first_weight;
         fprintf(outfile,"\t\tL_CTC_PER_NEUR_BW'({\n");
-        while (cur_weight != NULL){
-            fprintf(outfile,"\t\t\tL_TABLE_IDX_BW'(%d),L_TABLE_WEIGHT_BW'(%d)",cur_weight.assoc_neuron,cur_weight.value);
-            if (cur_weight!=NULL) fprintf(outfile,",\n");
+        while (cur_w != NULL){
+            fprintf(outfile,"\t\t\tL_TABLE_IDX_BW'(%d),L_TABLE_WEIGHT_BW'(%d)",cur_w->assoc_neuron,cur_w->value);
+            if (cur_w!=NULL) fprintf(outfile,",\n");
         }
         if (i!=rtl_params.l_num_inputs) fprintf(outfile,"}),\n");
         else fprintf(outfile,"})};\n");
@@ -419,6 +472,7 @@ bool strcmpl(const char* str1, const char* str2, int limit){
     // End of the module:
     fprintf(outfile,"\nendmodule");
     fclose(outfile);
+    printf("Finished generating RTL wrapper.\n");
 
     // Create Testbench file:
 
