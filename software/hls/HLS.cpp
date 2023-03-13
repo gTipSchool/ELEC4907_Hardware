@@ -100,7 +100,6 @@ void printNeur(struct Neuron neur_arr[], int num_neurons, int idx, bool print_we
     return;
 }
 void printNetwork(struct Neuron neur_arr[], int num_neurons, bool print_weights) {
-    Weight* cur_weight;
     printf("\nIdentified Network Stucture:\n");
     for (int i = 0; i < num_neurons; i++) {
         printNeur(neur_arr, num_neurons, i, print_weights);
@@ -217,9 +216,9 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
     struct Weight* cur_weight2;
     int idx;
     char msg[100] = "\nChecking Network Structure:\n---------------------------\n";
-    char warnings[5000] = "  Category WARNING:\n";
-    char errors[5000] = "  Category ERROR:\n";
-    char temp[200];
+    char warnings[10000] = "  CATEGORY \"WARNING\":\n";
+    char errors[10000] = "  CATEGORY \"ERROR\":\n";
+    char temp[300];
     bool w, e;
     w = false;
     e = false;
@@ -228,12 +227,12 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
     for (int i = 1; i <= params.l_num_inputs; i++) {
         cur_neuron = neur_arr[findNeur(neur_arr, params.l_num_neurons, i)];
         if (abs(cur_neuron.const_current) > 0) {
-            sprintf(temp, "   * WARNING: Input neuron \"%s\" (index %d) has a constant current value %d that will be ignored.\n", cur_neuron.id, cur_neuron.idx, cur_neuron.const_current);
+            sprintf(temp, "   * WARNING: Input neuron \"%s\" (index %d) has a constant current value %d that will be ignored.\n\n", cur_neuron.id, cur_neuron.idx, (int)(cur_neuron.const_current / pow(2, (double)params.l_table_weight_precision)));
             strcat(warnings, temp);
             w = true;
         }
         if (cur_neuron.num_weights > 0) {
-            sprintf(temp, "   * WARNING: Input neuron \"%s\" (index %d) has weights that will be ignored.\n", cur_neuron.id, cur_neuron.idx);
+            sprintf(temp, "   * WARNING: Input neuron \"%s\" (index %d) has weights that will be ignored.\n\n", cur_neuron.id, cur_neuron.idx);
             strcat(warnings, temp);
             w = true;
         }
@@ -243,7 +242,7 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
         cur_neuron = neur_arr[findNeur(neur_arr, params.l_num_neurons, i)];
         if (cur_neuron.num_weights == 0) {
             if (cur_neuron.const_current == 0) {
-                sprintf(temp, "   * WARNING: Hidden neuron \"%s\" (index %d) has no weights and no constant current.\n\t      Consider removing this neuron from the network as it consumes unnecessary resources.\n", cur_neuron.id, cur_neuron.idx);
+                sprintf(temp, "   * WARNING: Hidden neuron \"%s\" (index %d) has no weights and no constant current.\n\t      Consider removing this neuron from the network as it consumes unnecessary resources.\n\n", cur_neuron.id, cur_neuron.idx);
                 strcat(warnings, temp);
                 w = true;
             }
@@ -251,17 +250,22 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
         else {
             cur_weight1 = cur_neuron.first_weight;
             bool exit_flag = false;
-            while (cur_weight1 != nullptr && !exit_flag) {
+            while (cur_weight1 != nullptr) {
                 cur_weight2 = cur_neuron.first_weight;
-                while (cur_weight2 != nullptr) {
+                while (cur_weight2 != nullptr && !exit_flag) {
                     if (cur_weight1 != cur_weight2 && cur_weight1->assoc_neuron == cur_weight2->assoc_neuron){
-                        sprintf(temp, "   * ERROR: Hidden neuron \"%s\" (index %d) has two weights (value1=%d, value2=%d) for the same\n\t    source neuron \"%s\". Group these before rerunning.\n", cur_neuron.id, cur_neuron.idx,cur_weight1->value,cur_weight2->value,neur_arr[findNeur(neur_arr,params.l_num_neurons,cur_weight1->assoc_neuron)].id);
+                        sprintf(temp, "   * ERROR: Hidden neuron \"%s\" (index %d) has two weights (value1=%d, value2=%d) for the same\n\t    source neuron \"%s\" (index %d). Group these before rerunning.\n\n", cur_neuron.id, cur_neuron.idx,(int)(cur_weight1->value / pow(2, (double)params.l_table_weight_precision)),(int)(cur_weight2->value / pow(2, (double)params.l_table_weight_precision)),neur_arr[findNeur(neur_arr,params.l_num_neurons,cur_weight1->assoc_neuron)].id, cur_weight1->assoc_neuron);
                         strcat(errors, temp);
                         e = true;
                         exit_flag = true;
                         break;
                     }
                     cur_weight2 = cur_weight2->next_weight;
+                }
+                if (cur_weight1->assoc_neuron == cur_neuron.idx && (int)(cur_weight1->value / pow(2, (double)params.l_table_weight_precision)) > 20) {
+                    sprintf(temp, "   * WARNING: Hidden neuron \"%s\" (index %d) has a large weight (value=%d) associated with itself.\n\t      This may cause instability and deviation from the MATLAB model when implemented in hardware. \n\n", cur_neuron.id, cur_neuron.idx, (int)(cur_weight1->value / pow(2, (double)params.l_table_weight_precision)));
+                    strcat(warnings, temp);
+                    w = true;
                 }
                 cur_weight1 = cur_weight1->next_weight;
             }
@@ -271,18 +275,18 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
     for (int i = params.l_num_neurons-params.l_num_outputs+1; i <= params.l_num_neurons; i++) {
         cur_neuron = neur_arr[findNeur(neur_arr, params.l_num_neurons, i)];
         if (cur_neuron.num_weights == 0) {
-            sprintf(temp, "   * WARNING: Output neuron \"%s\" (index %d) has no weights. Consider removing\n\t    this neuron from the network.\n", cur_neuron.id, cur_neuron.idx);
+            sprintf(temp, "   * WARNING: Output neuron \"%s\" (index %d) has no weights. Consider removing\n\t    this neuron from the network.\n\n", cur_neuron.id, cur_neuron.idx);
             strcat(warnings, temp);
             w = true;
         }
         else {
             cur_weight1 = cur_neuron.first_weight;
             bool exit_flag = false;
-            while (cur_weight1 != nullptr && !exit_flag) {
+            while (cur_weight1 != nullptr) {
                 cur_weight2 = cur_neuron.first_weight;
-                while (cur_weight2 != nullptr) {
+                while (cur_weight2 != nullptr && !exit_flag) {
                     if (cur_weight1 != cur_weight2 && cur_weight1->assoc_neuron == cur_weight2->assoc_neuron) {
-                        sprintf(temp, "   * ERROR: Output neuron \"%s\" (index %d) has two weights (value1=%d, value2=%d)\n\t    for the same source neuron \"%s\". Group these before rerunning.\n", cur_neuron.id, cur_neuron.idx, cur_weight1->value, cur_weight2->value, neur_arr[findNeur(neur_arr, params.l_num_neurons, cur_weight1->assoc_neuron)].id);
+                        sprintf(temp, "   * ERROR: Output neuron \"%s\" (index %d) has two weights (value1=%d, value2=%d)\n\t    for the same source neuron \"%s\" (index %d). Group these before rerunning.\n\n", cur_neuron.id, cur_neuron.idx, (int)(cur_weight1->value / pow(2, (double)params.l_neur_model_precision)), (int)(cur_weight2->value / pow(2, (double)params.l_neur_model_precision)), neur_arr[findNeur(neur_arr, params.l_num_neurons, cur_weight1->assoc_neuron)].id, cur_weight1->assoc_neuron);
                         strcat(errors, temp);
                         e = true;
                         exit_flag = true;
@@ -293,46 +297,73 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
                 cur_weight1 = cur_weight1->next_weight;
             }
         }
-        if (cur_neuron.const_current > 20) {
-            sprintf(temp, "   * WARNING: Output neuron \"%s\" (index %d) has a large constant current %d.\n\t      This may cause the output counter value to saturate with larger number of execution periods.\n", cur_neuron.id, cur_neuron.idx, cur_neuron.const_current);
+        if ((int)(cur_neuron.const_current / pow(2, (double)params.l_table_weight_precision)) > 20) {
+            sprintf(temp, "   * WARNING: Output neuron \"%s\" (index %d) has a large constant current of value %d.\n\t      This may cause the output counter value to saturate with larger number of execution periods.\n\n", cur_neuron.id, cur_neuron.idx, (int)(cur_neuron.const_current / pow(2, (double)params.l_table_weight_precision)));
             strcat(warnings, temp);
             w = true;
         }
-
     }
+    // Check for floating neurons:
+    bool* neur_is_used = (bool*)calloc(params.l_num_neurons, sizeof(bool));
+    for (int i = 0; i < params.l_num_neurons; i++) {
+        cur_neuron = neur_arr[i];
+        cur_weight1 = cur_neuron.first_weight;
+        while (cur_weight1 != nullptr) {
+            for (int j = 1; j <= params.l_num_neurons; j++) if (cur_weight1->assoc_neuron == j) neur_is_used[j - 1] = true;
+            cur_weight1 = cur_weight1->next_weight;
+        }
+    }
+    for (int i = 0; i < params.l_num_neurons; i++) {
+        if (neur_is_used[i] == false && i<params.l_num_neurons-params.l_num_outputs) {
+            sprintf(temp, "   * WARNING: Neuron \"%s\" (index %d) has no weights associated with it in any other neurons.\n\t      Consider removing it to decrease hardware area.\n\n", neur_arr[findNeur(neur_arr,params.l_num_neurons,i+1)].id, i+1);
+            strcat(warnings, temp);
+            w = true;
+        }
+        else if (neur_is_used[i] == true && i >= params.l_num_neurons - params.l_num_outputs) {
+            sprintf(temp, "   * ERROR: Output neuron \"%s\" (index %d) has weights associated with it in\n\t    other neurons. This must be removed as back-propagation of output neurons is not supported.\n\n", neur_arr[findNeur(neur_arr, params.l_num_neurons, i + 1)].id, i + 1);
+            strcat(errors, temp);
+            e = true;
+        }
+    }
+    free(neur_is_used);
     // Check parameters:
     if (params.l_neur_model_precision % 2 == 1 || params.l_neur_model_precision<0) {
-        sprintf(temp, "   * ERROR: Neuron model precision parameter value %d is allowed. It must be a positive multiple of 2.\n", params.l_neur_model_precision);
+        sprintf(temp, "   * ERROR: Neuron model precision parameter value %d is allowed. It must be a positive multiple of 2.\n\n", params.l_neur_model_precision);
         strcat(errors, temp);
         e = true;
     }
     if (params.l_table_weight_precision<0) {
-        sprintf(temp, "   * ERROR: Weight precision parameter value %d is allowed. It must be a positive multiple of 2.\n", params.l_table_weight_precision);
+        sprintf(temp, "   * ERROR: Weight precision parameter value %d is allowed. It must be a positive multiple of 2.\n\n", params.l_table_weight_precision);
         strcat(errors, temp);
         e = true;
     }
     if (params.l_table_weight_precision > params.l_neur_model_precision) {
-        sprintf(temp, "   * ERROR: Weight precision parameter value %d is more than the neuron model precision.\n", params.l_neur_model_precision);
+        sprintf(temp, "   * ERROR: Weight precision parameter value %d is more than the neuron model precision value %d.\n\n", params.l_table_weight_precision, params.l_neur_model_precision);
         strcat(errors, temp);
         e = true;
     }
     if (params.l_max_num_periods > 65535) {
-        sprintf(temp, "   * ERROR: Maximum periods parameter value %d is more than the\n\t    maximum value of 65535.\n", params.l_max_num_periods);
+        sprintf(temp, "   * ERROR: Maximum periods parameter value %d is more than the maximum value of 65535.\n\n", params.l_max_num_periods);
         strcat(errors, temp);
         e = true;
     }
     if (params.l_table_max_num_rows > 255) {
-        sprintf(temp, "   * ERROR: The maximum number of weights for one or more neurons is %d\n\t    which is more than the maximum value of 255.\n", params.l_max_num_periods);
+        sprintf(temp, "   * ERROR: The maximum number of weights for one or more neurons is %d\n\t    which is more than the maximum value of 255.\n\n", params.l_max_num_periods);
         strcat(errors, temp);
         e = true;
     }
     if (params.l_neur_izh_high_prec_en&& params.l_neur_model_cfg == 0 && params.l_neur_model_precision>8) {
-        sprintf(temp, "   * WARNING: High Izhikevich neuron model precision is configured and the model precision is %d. \n\t      This will not utilize DSP multipliers, impacting timing.\n", params.l_max_num_periods);
+        sprintf(temp, "   * WARNING: High Izhikevich neuron model precision is configured and the model precision is %d.\n\t      This will not utilize DSP multipliers, impacting timing.\n\n", params.l_max_num_periods);
         strcat(warnings, temp);
         w = true;
     }
+    if (!params.l_neur_izh_high_prec_en && params.l_neur_model_precision > 10) {
+        sprintf(temp, "   * ERROR: Specified neuron model precision value %d is more than max value 10. Enable the high\n\t    precision parameter if a precision above 10 bits is desired.\n\n", params.l_neur_model_precision);
+        strcat(errors, temp);
+        e = true;
+    }
     printf(msg);
-    if (e) printf("%s\n",errors);
+    if (e) printf("%s",errors);
     if (w) printf(warnings);
     if (!w && !e) {
         printf("No errors or warnings identified.\n\n");
@@ -388,7 +419,7 @@ int main(int argc, char* argv[]) {
     const bool dbg = false;
 
     if (dbg) printf("Attempting to open input file\n");
-    char infilename[] = "./net_cfg_template4.txt";//argv[1];
+    char infilename[] = "./net_cfg_template3.txt";//argv[1];
     FILE* infile;
     errno_t err = fopen_s(&infile, infilename, "r+t");
     if (err != 0) {
@@ -576,8 +607,9 @@ int main(int argc, char* argv[]) {
     // - Can't have two weights sourced from the same neuron. Loop through each neuron and check that no two weights have the same index.
     // - Input neurons can't have any weights.
     // - Input neurons can't have constant currents (they are always variable).
+    // + many more
     if (checkNetwork(neurons, rtl_params) == false) {
-        printf("\nErrors has been identified in the network configuration file %s. Skipping RTL generation.\n", infilename);
+        printf("\nErrors have been identified in the network configuration file %s.\nSkipping RTL generation.\n", infilename);
         freeNeuronWeights(neurons, rtl_params.l_num_neurons);
         free(neurons);
         return 0;
