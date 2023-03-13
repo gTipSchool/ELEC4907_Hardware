@@ -1,0 +1,19 @@
+High-Level parameters:
+3 Total number of neurons (includes inputs and outputs)
+1 Number of Input neurons
+1 Number of Output neurons
+200 Maximum number of timesteps
+40 Default neuron output step length
+2 Neuron Precision (number of bits)
+1 Weight precision (number of bits) (must be less than neuron precision
+0 dynamic/static weight, const current, and step length selection (0 for weights prior to synthesis, 1 to load weights in after synthesis)
+
+Neuron ID/Address Table: 
+1 N1
+2 N2
+3 N3
+
+Sources:
+2 1 5
+2 Constant 5
+3 2 5
