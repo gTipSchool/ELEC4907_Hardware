@@ -412,14 +412,14 @@ bool strstrip(char* str, const char delimiter) {
 int main(int argc, char* argv[]) {
     // Error checking:
     //-----------------
-    /*if (argc!=2){
+    if (argc!=2){
         printf("Error in gen_wrapper.c: No network configuration file specified.\n");
         return 0;
-    }*/
+    }
     const bool dbg = false;
 
     if (dbg) printf("Attempting to open input file\n");
-    char infilename[] = "./net_cfg_template3.txt";//argv[1];
+    char* infilename = argv[1];
     FILE* infile;
     errno_t err = fopen_s(&infile, infilename, "r+t");
     if (err != 0) {

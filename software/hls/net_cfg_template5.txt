@@ -1,0 +1,111 @@
+Net Cfg to Hardware Conversion:
+Input Network Cfg File Format (.txt)
+
+High-Level parameters:
+41 Total number of neurons (includes inputs and outputs)
+23 Number of Input neurons
+3 Number of Output neurons
+200 Maximum number of timesteps
+40 Default neuron output step length
+2 Neuron Precision (number of bits)
+1 Weight precision (number of bits) (must be less than neuron precision
+0 dynamic/static weight, const current, and step length selection (0 for weights prior to synthesis, 1 to load weights in after synthesis)
+
+Neuron ID/Address Table: 
+1 Subsystem 1
+2 Subsystem 2
+3 Subsystem 3
+4 Subsystem 4
+5 Subsystem 5
+6 Subsystem 6
+7 Subsystem 7
+8 Subsystem 8
+9 Subsystem 9
+10 Subsystem 10
+11 Subsystem 11
+12 Subsystem 12
+13 Subsystem 13
+14 Subsystem 14
+15 Subsystem 15
+16 Subsystem 16
+17 Subsystem 17
+18 Subsystem 18
+19 Subsystem 19
+20 Subsystem 20
+21 Subsystem 21
+22 Subsystem 22
+23 Subsystem 23
+24 Subsystem 24
+25 Subsystem 25
+26 Subsystem 26
+27 Subsystem 27
+28 Subsystem 28
+29 Subsystem 29
+30 Subsystem 30
+31 Subsystem 31
+32 Subsystem 32
+33 Subsystem 33
+34 Subsystem 34
+35 Subsystem 35
+36 Subsystem 36
+37 Subsystem 37
+38 Subsystem 38
+39 Subsystem_Right_Output_39
+40 Subsystem_Forward_Output_40
+41 Subsystem_Left_Output_41
+
+Sources:
+40 27 14
+39 27 -30
+41 27 -30
+34 27 -40
+33 27 -40
+37 36 -6
+38 36 6
+38 35 -6
+33 32 -12
+34 31 -12
+38 34 10
+37 33 10
+37 35 6
+28 16 9
+29 20 9
+28 17 9
+28 15 9
+29 18 9
+30 22 9
+29 19 9
+30 23 9
+30 21 9
+26 9 9
+26 8 9
+26 7 9
+32 30 12
+32 29 12
+32 28 12
+31 24 12
+31 25 12
+31 26 12
+25 6 9
+25 5 9
+25 4 9
+24 3 9
+24 2 9
+24 1 9
+27 11 14
+27 12 14
+27 14 14
+27 13 14
+35 34 -6
+36 33 -6
+36 34 -6
+35 33 1
+41 38 8
+39 37 8
+34 32 12
+33 31 12
+27 10 14
+35 constant 4
+39 constant 5
+40 constant death
+41 constant death
