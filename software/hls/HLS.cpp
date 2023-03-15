@@ -342,8 +342,8 @@ bool checkNetwork(struct Neuron neur_arr[], struct HLParams params) {
         strcat(errors, temp);
         e = true;
     }
-    if (params.l_max_num_periods > 65535) {
-        sprintf(temp, "   * ERROR: Maximum periods parameter value %d is more than the maximum value of 65535.\n\n", params.l_max_num_periods);
+    if (params.l_max_num_periods > 65535 || params.l_max_num_periods < 257) {
+        sprintf(temp, "   * ERROR: Maximum periods parameter value %d is more/less than the max/min value of 65535/257.\n\n", params.l_max_num_periods);
         strcat(errors, temp);
         e = true;
     }
@@ -653,7 +653,7 @@ int main(int argc, char* argv[]) {
     fprintf(outfile, "\tlocalparam L_TABLE_DFLT_NUM_ROWS = %d;\n", rtl_params.l_table_dflt_num_rows);
     fprintf(outfile, "\tlocalparam L_NEUR_CURRENT_BW = %d;\n", rtl_params.l_neur_current_bw);
     fprintf(outfile, "\tlocalparam L_NEUR_MODEL_PRECISION = %d;\n", rtl_params.l_neur_model_precision);
-    fprintf(outfile, "\tlocalparam L_NEUR_HIGH_PREC_EN = %d;\n", rtl_params.l_neur_izh_high_prec_en);
+    fprintf(outfile, "\tlocalparam L_NEUR_IZH_HIGH_PREC_EN = %d;\n", rtl_params.l_neur_izh_high_prec_en);
     fprintf(outfile, "\tlocalparam L_DFLT_CNTR_VAL = %d;\n", rtl_params.l_dflt_cntr_val);
     fprintf(outfile, "\tlocalparam L_NEUR_STEP_CNTR_BW = %d;\n", rtl_params.l_neur_step_cntr_bw);
     fprintf(outfile, "\tlocalparam L_MAX_NUM_PERIODS = %d;\n", rtl_params.l_max_num_periods);
