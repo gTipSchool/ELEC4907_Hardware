@@ -24,6 +24,7 @@ module sn_network_top_cfg
       parameter P_UART_CLKS_PER_BIT=10, // Number of prot_clk clock cycles per bit on the UART interface. Depends on baudrate.
       parameter P_UART_BITS_PER_PKT=10, // Total number of bits per UART packet, including the start and end bits.
       parameter P_PROT_WATCHDOG_TIME=100, // Number of cycles until the HW watchdog timer expires.
+      parameter P_USE_PROTOCOL2 = 1,
       parameter P_CLK_GEN_EN=1,
       localparam L_TABLE_IDX_BW=$clog2(P_NUM_NEURONS-P_NUM_OUTPUTS+1)
     )
@@ -111,24 +112,55 @@ module sn_network_top_cfg
 
     // Protocol Manager
     //-------------------
-    sn_io_protocol
-    #(
-        .P_CLKS_PER_BIT(P_UART_CLKS_PER_BIT),
-        .P_BITS_TO_SEND(P_UART_BITS_PER_PKT),
-        .P_BITS_TO_RECEIVE(P_UART_BITS_PER_PKT),
-        .P_PROT_WATCHDOG_TIME(P_PROT_WATCHDOG_TIME)
-    ) io_protocol_i (
-        .clk(clk),
-        .rst(rst),
-        // Input UART Interface
-        .uart_rx(rx_input),
-        .uart_tx(tx_output),
-        // Protocol Interface
-        .prot_enable(prot_enable),
-        .prot_r0w1(prot_r0w1),
-        .prot_addr(prot_addr),
-        .prot_wdata(prot_wdata),
-        .prot_rdata(prot_rdata)
-    );
+generate
+    if (P_USE_PROTOCOL2==0) begin: gen_orig_prot
+    
+        sn_io_protocol
+        #(
+            .P_CLKS_PER_BIT(P_UART_CLKS_PER_BIT),
+            .P_BITS_TO_SEND(P_UART_BITS_PER_PKT),
+            .P_BITS_TO_RECEIVE(P_UART_BITS_PER_PKT),
+            .P_PROT_WATCHDOG_TIME(P_PROT_WATCHDOG_TIME)
+        ) io_protocol_i (
+            .clk(clk),
+            .rst(rst),
+            // Input UART Interface
+            .uart_rx(rx_input),
+            .uart_tx(tx_output),
+            // Protocol Interface
+            .prot_enable(prot_enable),
+            .prot_r0w1(prot_r0w1),
+            .prot_addr(prot_addr),
+            .prot_wdata(prot_wdata),
+            .prot_rdata(prot_rdata)
+        );
+        
+    end else begin: gen_prot2
+        
+        sn_io_protocol2
+        #(
+            .P_CLKS_PER_BIT(P_UART_CLKS_PER_BIT),
+            .P_BITS_TO_SEND(P_UART_BITS_PER_PKT),
+            .P_BITS_TO_RECEIVE(P_UART_BITS_PER_PKT),
+            .P_NUM_NEURONS(P_NUM_NEURONS),
+            .P_NUM_INPUTS(P_NUM_INPUTS),
+            .P_NUM_OUTPUTS(P_NUM_OUTPUTS),
+            .P_PROT_WATCHDOG_TIME(P_PROT_WATCHDOG_TIME)
+        ) io_protocol2_i (
+            .clk(clk),
+            .rst(rst),
+            // Input UART Interface
+            .uart_rx(rx_input),
+            .uart_tx(tx_output),
+            // Protocol Interface
+            .prot_enable(prot_enable),
+            .prot_r0w1(prot_r0w1),
+            .prot_addr(prot_addr),
+            .prot_wdata(prot_wdata),
+            .prot_rdata(prot_rdata)
+        );
+        
+    end
+endgenerate
 
 endmodule
