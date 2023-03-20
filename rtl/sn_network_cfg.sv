@@ -269,7 +269,7 @@ generate
                 .v_out(v_out[g]),
                 .u_out(u_out[g]),
                 // Cfg:
-                .cfg_table_contents(cfg_table_contents[g-P_NUM_INPUTS][P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]-1:0])
+                .cfg_table_contents(P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]==0?'0:cfg_table_contents[g-P_NUM_INPUTS][P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]-1:0])
             );
         
         end 
@@ -317,7 +317,7 @@ generate
                 .v_out(v_out[g]),
                 .u_out(u_out[g]),
                 // Cfg:
-                .cfg_table_contents(cfg_table_contents[g-P_NUM_INPUTS][P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]-1:0])
+                .cfg_table_contents(P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]==0?'0:cfg_table_contents[g-P_NUM_INPUTS][P_TABLE_NUM_ROWS_ARRAY[g-P_NUM_INPUTS]-1:0])
             );
             
         end

@@ -209,9 +209,9 @@ generate
             for (int i=0; i<P_TABLE_NUM_ROWS; i++)
                 if (row_idx_match[i]) begin
                     if (!table_s[i])
-                        current_nxt = current_nxt + table_w[i];
+                        current_nxt = signed'(current_nxt) + $bits(current_nxt)'(signed'(table_w[i]));
                     else
-                        current_nxt = current_nxt - table_w[i];
+                        current_nxt = signed'(current_nxt) - $bits(current_nxt)'(signed'(table_w[i]));
                 end
         end
 
@@ -404,8 +404,8 @@ generate
         assign v_nxt = spiking ? $bits(v_nxt)'(L_IZH_C <<< P_NEUR_MODEL_PRECISION) : v_nxt_nomux;
 
         // Calculating the next u value:
-        assign v_xcmu = (v_nxt_nomux >>> 3) + (v_nxt_nomux >>> 4) + (v_nxt_nomux >>> 6) - u;
-        assign v_xcmu_x_const = (v_xcmu >>> 8) + (v_xcmu >>> 10);
+        assign v_xcmu = (v_nxt_nomux >>> 3) + (v_nxt_nomux >>> 4) + (v_nxt_nomux >>> 6) - u;//(v_nxt_nomux >>> 7) +  (v_nxt_nomux >>> 8) - u;
+        assign v_xcmu_x_const = (v_xcmu >>> 8) + (v_xcmu >>> 10);// + (v_xcmu >>> 13);
         assign u_nxt_nomux = v_xcmu_x_const + u;
         
         assign u_nxt = spiking ? $bits(u_nxt)'((L_IZH_D <<< P_NEUR_MODEL_PRECISION) + u) : u_nxt_nomux;
