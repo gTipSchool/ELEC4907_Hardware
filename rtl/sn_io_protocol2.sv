@@ -47,10 +47,10 @@ module sn_io_protocol2
      input [8-1:0] prot_rdata // Data returned during a read. Valid when prot_enable=1 (i.e. no read latency).
     );
     
-    localparam byte L_TX_TO_START    = 8'hFF;
-    localparam byte L_TX_TO_CONTINUE = 8'hFF;
-    localparam byte L_TX_TO_STOP     = 8'h00;
-    localparam byte L_TX_TO_LOAD_TIMESTEP = 8'h55; //0101_0101
+    localparam byte L_TX_TO_START         = 8'hFF;
+    localparam byte L_TX_TO_STOP          = 8'h00;
+    localparam byte L_TX_TO_LOAD_TIMESTEP = 8'h55; // 0101_0101
+    localparam byte L_TX_TO_READ_DM       = 8'hAA; // 1010_1010
     // IO for the instantiated modules uart_rx.sv and uart_tx.sv:
     logic [7:0] rx_word; // Output from uart_rx.sv
     logic [7:0] tx_word; // input into uart_tx.sv (output from a MUX whose inputs are prot_rdata and rx_word_r).
@@ -89,8 +89,16 @@ module sn_io_protocol2
     logic [$clog2(P_NUM_INPUTS+1)-1:0] input_cnt,input_cnt_nxt;
     // Output counter for the Read Outputs (RO) state loop.
     logic [$clog2(P_NUM_OUTPUTS)-1:0] output_cnt,output_cnt_nxt;
+    // Timestep register:
+    logic [7:0] ts_cnt_msb, ts_cnt_msb_nxt, ts_cnt_sub1_msb,
+                ts_cnt_lsb, ts_cnt_lsb_nxt, ts_cnt_sub1_lsb;
+    // Partial timestep register:
+    localparam byte L_PTS_CNT_RST_VAL = 8'(P_NUM_NEURONS%8==0 ? P_NUM_NEURONS/8-1 : P_NUM_NEURONS/8); // FIXME Doesn't work for <8 neurons.
+    logic [7:0] pts_cnt, pts_cnt_nxt;
+    // Delay bit for Debug monitor loop:
+    logic dm_dly;
     // FSM states:
-    typedef enum bit [$clog2(13)-1:0] {IDLE,
+    typedef enum bit [$clog2(20)-1:0] {IDLE,
                             // Writing timestep (WT):
                             WT_MSB,WT_LSB,
                             // Write Input (WI) states:
@@ -102,9 +110,12 @@ module sn_io_protocol2
                             EP_READ_START,
                             // Read Outputs (RO) states:
                             RO_CNTR_SEL,
-                            RO_TX_CNTR
-                            // Read Debug Monitor (RM) states:
-                            // TODO
+                            RO_TX_CNTR,
+                            // Read Debug Monitor (DM) states:
+                            DM_READ_TS_MSB,DM_READ_TS_LSB,
+                            DM_WRITE_TS_MSB,DM_WRITE_TS_LSB,
+                            DM_WRITE_PTS,
+                            DM_TX_PTS,DM_WAIT
                             } state_t; 
     state_t s, s_nxt;
     
@@ -116,6 +127,10 @@ module sn_io_protocol2
             watchdog_cnt <= '0;
             input_cnt <= 'd1;
             output_cnt <= '0;
+            ts_cnt_msb <= '0;
+            ts_cnt_lsb <= 'd1;
+            pts_cnt <= L_PTS_CNT_RST_VAL;
+            dm_dly <= 1'b0;
         end else begin
             s <= s_nxt;
             if (watchdog_en)
@@ -124,13 +139,18 @@ module sn_io_protocol2
                 watchdog_cnt <= '0;
             input_cnt <= input_cnt_nxt;
             output_cnt <= output_cnt_nxt;
+            ts_cnt_msb <= ts_cnt_msb_nxt;
+            ts_cnt_lsb <= ts_cnt_lsb_nxt;
+            pts_cnt <= pts_cnt_nxt;
+            dm_dly <= s==DM_WRITE_PTS;
         end
     end
+    assign {ts_cnt_sub1_msb,ts_cnt_sub1_lsb} = {ts_cnt_msb,ts_cnt_lsb} - 16'd1;
     
     // Next State Comb Logic:
     //========================
     always_comb begin
-        // Default/else for all wires. They might be overridden later in the always_comb block.
+        // Default/else.
         s_nxt = s;
 
         if (watchdog_cnt == $bits(watchdog_cnt)'(P_PROT_WATCHDOG_TIME))
@@ -141,6 +161,7 @@ module sn_io_protocol2
                 if (rx_done) begin
                     if (rx_word == L_TX_TO_START) s_nxt = WI_ADDR_MSB;
                     else if (rx_word == L_TX_TO_LOAD_TIMESTEP) s_nxt = WT_MSB;
+                    else if (rx_word == L_TX_TO_READ_DM) s_nxt = DM_READ_TS_MSB;
                 end
 
             // WT_MSB: wait for a transmission holding the MSB of the requested max timestep.
@@ -149,7 +170,7 @@ module sn_io_protocol2
 
             // WT_LSB: wait for a transmission holding the LSB of the requested max timestep.
             WT_LSB:
-                s_nxt = IDLE;
+                if (rx_done) s_nxt = IDLE;
 
             // WI_ADDR_MSB: write msb of address, which is the lsb of the input counter.
             WI_ADDR_MSB:
@@ -183,10 +204,8 @@ module sn_io_protocol2
                 
             // EP_READ_START: Wait for transmission from computer signalling that it wants to read the state of the start register.
             EP_READ_START:
-                if (rx_done) begin
-                    if (rx_word == L_TX_TO_CONTINUE && prot_rdata == 8'd0) s_nxt = RO_CNTR_SEL;
-                    else if (rx_word == L_TX_TO_STOP) s_nxt = IDLE;
-                end
+                if (prot_rdata == 8'd0) s_nxt = RO_CNTR_SEL;
+                else if (rx_done && rx_word == L_TX_TO_STOP) s_nxt = IDLE;
             
             // RO_CNTR_SEL: Wait for transmission to continue from computer before reading a counter.
             //              In the background, when tx received, protocol interface sets the output counter to target.
@@ -198,6 +217,32 @@ module sn_io_protocol2
             RO_TX_CNTR: 
                 if (output_cnt == $bits(output_cnt)'(P_NUM_OUTPUTS-1)) s_nxt = IDLE;
                 else s_nxt = RO_CNTR_SEL;
+
+            DM_READ_TS_MSB:
+                s_nxt = DM_READ_TS_LSB;
+            
+            DM_READ_TS_LSB:
+                s_nxt = DM_WRITE_TS_MSB;
+            
+            DM_WRITE_TS_MSB:
+                s_nxt = DM_WRITE_TS_LSB;
+            
+            DM_WRITE_TS_LSB:
+                s_nxt = DM_WRITE_PTS;
+            
+            DM_WRITE_PTS:
+                if (dm_dly) s_nxt = DM_TX_PTS;
+            
+            DM_TX_PTS:
+                if (pts_cnt==0 && ts_cnt_msb==0 && ts_cnt_lsb==1) s_nxt = IDLE;
+                else s_nxt = DM_WAIT;
+
+            DM_WAIT:
+                if (tx_done) begin
+                    if (pts_cnt==0) s_nxt = DM_WRITE_TS_MSB;
+                    else s_nxt = DM_WRITE_PTS;
+                end
+
             default:;
         endcase
     end
@@ -211,6 +256,9 @@ module sn_io_protocol2
         //      Register next values:
         input_cnt_nxt = input_cnt;
         output_cnt_nxt = output_cnt;
+        ts_cnt_msb_nxt = ts_cnt_msb;
+        ts_cnt_lsb_nxt = ts_cnt_lsb;
+        pts_cnt_nxt = pts_cnt;
         //      Comb logic:
         watchdog_en = 1'b0;
         tx_word = prot_rdata;
@@ -226,7 +274,7 @@ module sn_io_protocol2
             // IDLE state. Waiting to start.
             IDLE:;
 
-            // WT_MSB: wait for a transmission holding the MSB of the requested max timestep.
+            // WT_MSB: wait for a transmission holding the MSB of the requested max timestep before writing it.
             WT_MSB:
                 if (rx_done) begin
                     prot_enable = 1'b1;
@@ -234,7 +282,7 @@ module sn_io_protocol2
                     prot_addr = 7'd3;
                 end else watchdog_en = 1'b1;
 
-            // WT_LSB: wait for a transmission holding the LSB of the requested max timestep.
+            // WT_LSB: wait for a transmission holding the LSB of the requested max timestep before writing it.
             WT_LSB:
                 if (rx_done) begin
                     prot_enable = 1'b1;
@@ -242,7 +290,7 @@ module sn_io_protocol2
                     prot_addr = 7'd4;
                 end else watchdog_en = 1'b1;
             
-            // WI_ADDR_MSB: write MSB of address from the counter value.
+            // WI_ADDR_MSB: write MSB of address from the counter value. Immediately go to the next state.
             WI_ADDR_MSB:
                 begin
                     prot_enable = 1'b1;
@@ -251,7 +299,7 @@ module sn_io_protocol2
                     if (P_NUM_INPUTS>=2**8) prot_wdata = input_cnt[$bits(input_cnt)-1:8];
                 end
 
-            // WI_ADDR_LSB: write LSB of address from the counter value.
+            // WI_ADDR_LSB: write LSB of address from the counter value. Immediately go to the next state.
             WI_ADDR_LSB:
                 begin
                     prot_enable = 1'b1;
@@ -277,28 +325,30 @@ module sn_io_protocol2
                 end else watchdog_en = 1'b1;
             
             // WI_DATA_0: waiting for RX from computer that holds the LSB of the input current data.
-            //            if we're concluding the last input, then go to Execute and Poll states, otherwise
-            //            restart the Write Inputs states.
             WI_DATA_0:
                 if (rx_done) begin
                     prot_enable = 1'b1;
                     prot_r0w1 = 1'b1;
                     prot_addr = 7'd11;
                 end else watchdog_en = 1'b1;
-                
+            
+            // WI_WRITE: write to address 5 (mmu_we register). This will cause the MMU to write the specified data
+            //           at the specified address. 
+            //           If all inputs have been written, then go to the execute and poll states.
             WI_WRITE:
                 begin
                     prot_enable = 1'b1;
                     prot_r0w1 = 1'b1;
                     prot_addr = 7'd5;
-                    prot_wdata = 8'd1;
+                    //prot_wdata = 8'd1; commenting this out because the wdata is irrelevant when writing to this register.
                     if (input_cnt== $bits(input_cnt)'(P_NUM_INPUTS)) begin
                         input_cnt_nxt = $bits(input_cnt)'(1);
                     end else begin
                         input_cnt_nxt = input_cnt + $bits(input_cnt)'(1);
                     end
                 end
-                
+            
+            // EP_START_EXE: write 1'b1 to the address 0 (the start register) to start network execution.
             EP_START_EXE:
                 begin
                     prot_enable = 1'b1;
@@ -307,19 +357,24 @@ module sn_io_protocol2
                     prot_wdata = 8'd1;
                 end
             
-            // EP_READ_START: Wait for transmission from computer signalling that it wants to read the state of the start register.
+            // EP_READ_START: Wait for a transmission from computer signalling that it wants to read the state of the start register.
+            //                When a transmission is received, transmit the contents of the start register.
+            //                If the start register is zero (meaning execution is done), then still send the contents of the reg,
+            //                but also go to the Read Outputs loop to start sending the output counter values.
             EP_READ_START:
                 begin
                     // Continuously read the start bit:
                     prot_enable = 1'b1;
                     prot_r0w1 = 1'b0;
                     prot_addr = 7'd0;
-                    // Transmit if we receive anything:
-                    tx_enable = rx_done;
+                    // Transmit if we receive anything or the execution finishes:
+                    tx_enable = rx_done | prot_rdata==8'd0;
                 end
             
-            // RO_READ_CNTR: Wait for transmission to continue from computer before reading a counter.
-            //               In the background, when tx received, protocol interface sets the output counter to target.
+            // RO_READ_CNTR: Wait for the last transmission to complete while also selecting the next counter to read
+            //               using the protocol interface.
+            //               The first time this state is entered, it's waiting for the start register to be transmitted,
+            //               but after this it waits for the currently selected counter to be transmitted.
             RO_CNTR_SEL:
                 begin
                     prot_enable = 1'b1;
@@ -329,6 +384,7 @@ module sn_io_protocol2
                 end
             
             // RO_TX_CNTR: Transmit the counter then immediately go to RO_READ_CNTR or IDLE depending on if it's the last counter.
+            //             Also increment the output counter so that a different output can be selected in the next loop.
             RO_TX_CNTR:
                 begin
                     prot_enable = 1'b1;
@@ -338,7 +394,63 @@ module sn_io_protocol2
                     if (output_cnt== $bits(output_cnt)'(P_NUM_OUTPUTS-1)) output_cnt_nxt = '0;
                     else output_cnt_nxt = output_cnt + $bits(output_cnt)'(1);
                 end
+
+            DM_READ_TS_MSB:
+                begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b0;
+                    prot_addr = 7'd3;
+                    ts_cnt_msb_nxt = prot_rdata;
+                end
             
+            DM_READ_TS_LSB:
+                begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b0;
+                    prot_addr = 7'd4;
+                    ts_cnt_lsb_nxt = prot_rdata;
+                end
+            
+            DM_WRITE_TS_MSB:
+                begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b1;
+                    prot_addr = 7'd14;
+                    prot_wdata = ts_cnt_msb;
+                end
+            
+            DM_WRITE_TS_LSB:
+                begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b1;
+                    prot_addr = 7'd15;
+                    prot_wdata = ts_cnt_lsb;
+                    pts_cnt_nxt = L_PTS_CNT_RST_VAL;
+                end
+            
+            DM_WRITE_PTS:
+                if (!dm_dly) begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b1;
+                    prot_addr = 7'd16;
+                    prot_wdata = pts_cnt;
+                end
+            
+            DM_TX_PTS:
+                begin
+                    prot_enable = 1'b1;
+                    prot_r0w1 = 1'b0;
+                    prot_addr = 7'd17;
+                    tx_enable = 1'b1;
+                end
+            
+            DM_WAIT:
+                if (tx_done) begin
+                    if (pts_cnt==0) begin
+                        ts_cnt_msb_nxt = ts_cnt_sub1_msb;
+                        ts_cnt_lsb_nxt = ts_cnt_sub1_lsb;
+                    end else pts_cnt_nxt = pts_cnt - $bits(pts_cnt)'(1'd1);
+                end
             default:;
         endcase
     end

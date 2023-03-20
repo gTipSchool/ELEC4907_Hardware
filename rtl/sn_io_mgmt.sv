@@ -66,6 +66,8 @@ module sn_io_mgmt
     // Max period reg
     wire sw_max_per_msb_wen;
     wire sw_max_per_lsb_wen;
+    wire sw_max_per_msb_ren;
+    wire sw_max_per_lsb_ren;
     // MMU we reg
     wire sw_mmu_we_wen;
     // MMU waddr regs
@@ -97,6 +99,8 @@ module sn_io_mgmt
     assign sw_cur_per_lsb_ren =              read_enable  & (prot_addr == 7'd2);
     assign sw_max_per_msb_wen =              write_enable & (prot_addr == 7'd3);
     assign sw_max_per_lsb_wen =              write_enable & (prot_addr == 7'd4);
+    assign sw_max_per_msb_ren =              read_enable  & (prot_addr == 7'd3);
+    assign sw_max_per_lsb_ren =              read_enable  & (prot_addr == 7'd4);
     assign sw_mmu_we_wen =                   write_enable & (prot_addr == 7'd5);
     assign sw_mmu_waddr_23_16_wen =          write_enable & (prot_addr == 7'd6);
     assign sw_mmu_waddr_15_8_wen =           write_enable & (prot_addr == 7'd7);
@@ -288,31 +292,39 @@ module sn_io_mgmt
     //      the selection will be output.
     //          Address 7'd17;
     
-    reg [P_NUM_NEURONS-P_NUM_OUTPUTS:1] spiking_state;
-    logic [P_NUM_NEURONS-P_NUM_OUTPUTS:1] spiking_state_nxt;
+    reg [P_NUM_NEURONS:1] spiking_state;
+    logic [P_NUM_NEURONS:1] spiking_state_nxt;
     
     always_ff @(posedge clk) begin
         if (rst)
             spiking_state <= '0;
-        else if (api_vld && |api_bus)
-            spiking_state <= spiking_state_nxt;
+        else begin
+            if (nc_reset)
+                spiking_state <= '0;
+            else begin
+                if (api_vld && |api_bus)
+                    spiking_state[P_NUM_NEURONS-P_NUM_OUTPUTS:1] <= spiking_state_nxt[P_NUM_NEURONS-P_NUM_OUTPUTS:1];
+                if (|net_outputs && !nc_warmup)
+                    spiking_state[P_NUM_NEURONS:P_NUM_NEURONS-P_NUM_OUTPUTS+1] <= spiking_state_nxt[P_NUM_NEURONS:P_NUM_NEURONS-P_NUM_OUTPUTS+1];
+            end
+        end
     end
     
     always_comb begin
         spiking_state_nxt = spiking_state; // Default/else
-        for (int i=1; i<=P_NUM_NEURONS-P_NUM_OUTPUTS; i++) begin
+        for (int i=1; i<=P_NUM_NEURONS-P_NUM_OUTPUTS; i++)
             if (api_bus == $bits(api_bus)'(i))
                 spiking_state_nxt[i] = ~spiking_state[i];
-        end
+        spiking_state_nxt[P_NUM_NEURONS:P_NUM_NEURONS-P_NUM_OUTPUTS+1] = net_outputs;
     end
     
-    reg [P_NUM_NEURONS-P_NUM_OUTPUTS:1] dbg_mon_cache;
+    reg [P_NUM_NEURONS-1:0] dbg_mon_cache;
     wire dbg_mon_mem_we, dbg_mon_mem_re_p;
     reg dbg_mon_mem_re,dbg_mon_mem_re_d;
-    logic [P_NUM_NEURONS-P_NUM_OUTPUTS:1] dbg_mon_mem_rdata;
-    reg [$clog2(P_MAX_NUM_PERIODS)-1:0] dbg_mon_time_sel_r;
-    logic [$clog2(P_MAX_NUM_PERIODS)-1:0] dbg_mon_time_sel_nxt;
-    localparam L_NUM_PARTIAL_TS_IDX = (P_NUM_NEURONS-P_NUM_OUTPUTS+1)%8==0 ? (P_NUM_NEURONS-P_NUM_OUTPUTS+1)/8 : (P_NUM_NEURONS-P_NUM_OUTPUTS+1)/8 + 1;
+    logic [P_NUM_NEURONS-1:0] dbg_mon_mem_rdata;
+    reg [$clog2(P_MAX_NUM_PERIODS+1)-1:0] dbg_mon_time_sel_r;
+    logic [$clog2(P_MAX_NUM_PERIODS+1)-1:0] dbg_mon_time_sel_nxt;
+    localparam L_NUM_PARTIAL_TS_IDX = P_NUM_NEURONS%8==0 ? P_NUM_NEURONS/8 : P_NUM_NEURONS/8+1;
     reg [$clog2(L_NUM_PARTIAL_TS_IDX)-1:0] dbg_mon_partial_time_sel_r;
     logic [7:0] dbg_mon_output;
     
@@ -340,13 +352,13 @@ module sn_io_mgmt
     
     always_comb begin
         dbg_mon_time_sel_nxt = dbg_mon_time_sel_r; // Default/else
-        if (sw_dbg_mon_time_sel_msb_wen) dbg_mon_time_sel_nxt[$clog2(P_MAX_NUM_PERIODS)-1:8] = prot_wdata;
+        if (sw_dbg_mon_time_sel_msb_wen) dbg_mon_time_sel_nxt[$clog2(P_MAX_NUM_PERIODS+1)-1:8] = prot_wdata;
         if (sw_dbg_mon_time_sel_lsb_wen) dbg_mon_time_sel_nxt[7:0] = prot_wdata;
     end
     
     sn_1r1w_mem #(
-        .P_NUM_ROWS(P_MAX_NUM_PERIODS),
-        .P_DATA_WIDTH(P_NUM_NEURONS-P_NUM_OUTPUTS))
+        .P_NUM_ROWS(P_MAX_NUM_PERIODS+1),
+        .P_DATA_WIDTH(P_NUM_NEURONS))
     dbg_mon_mem_i (
         .rclk(clk),
         .re(dbg_mon_mem_re),
@@ -359,18 +371,10 @@ module sn_io_mgmt
         
     always_comb begin
         dbg_mon_output = '0; // Default/else
-        // For 21 neurons, 3 output neurons:
-        // P_NUM_NEURONS-P_NUM_OUTPUTS=18
-        //  sel=0: outputs[8:1]
-        //  sel=1: outputs[16:9]
-        //  sel=2: outputs[18:17] = 18:16+1
-        if (dbg_mon_partial_time_sel_r == (P_NUM_NEURONS-P_NUM_OUTPUTS)/8-1 && 
-            ((P_NUM_NEURONS-P_NUM_OUTPUTS)%8)>0)
-            dbg_mon_output = $bits(dbg_mon_output)'(dbg_mon_cache[P_NUM_NEURONS-P_NUM_OUTPUTS : P_NUM_NEURONS-P_NUM_OUTPUTS-((P_NUM_NEURONS-P_NUM_OUTPUTS)%8)+1]);
-        else if (dbg_mon_partial_time_sel_r == 0)
-            dbg_mon_output = '0;
+        if (dbg_mon_partial_time_sel_r == P_NUM_NEURONS/8 && P_NUM_NEURONS%8>0)
+            dbg_mon_output = $bits(dbg_mon_output)'(dbg_mon_cache[P_NUM_NEURONS-1: P_NUM_NEURONS - (P_NUM_NEURONS%8)]);
         else
-            dbg_mon_output = dbg_mon_cache[dbg_mon_partial_time_sel_r +: 8];
+            dbg_mon_output = dbg_mon_cache[dbg_mon_partial_time_sel_r*8 +: 8];
     end
 
     // Rdata MUX
@@ -382,6 +386,8 @@ module sn_io_mgmt
         if (sw_cur_per_lsb_ren)    prot_rdata = 8'(nc_io_cur_per);
         if (sw_selected_cntr_ren)  prot_rdata = 8'(selected_cntr);
         if (sw_dbg_mon_output_ren) prot_rdata = 8'(dbg_mon_output);
+        if (sw_max_per_msb_ren)    prot_rdata = max_per_msb_r;
+        if (sw_max_per_lsb_ren)    prot_rdata = max_per_lsb_r;
     end
     
 endmodule

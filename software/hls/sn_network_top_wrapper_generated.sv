@@ -21,11 +21,11 @@ module sn_network_top_wrapper_generated
 	localparam L_NUM_NEURONS = 41;
 	localparam L_NUM_INPUTS = 23;
 	localparam L_NUM_OUTPUTS = 3;
-	localparam L_TABLE_WEIGHT_BW = 10;
+	localparam L_TABLE_WEIGHT_BW = 7;
 	localparam L_TABLE_WEIGHT_PRECISION = 1;
-	localparam L_TABLE_MAX_NUM_ROWS = 8;
+	localparam L_TABLE_MAX_NUM_ROWS = 5;
 	localparam L_TABLE_DFLT_NUM_ROWS = 0;
-	localparam L_NEUR_CURRENT_BW = 11;
+	localparam L_NEUR_CURRENT_BW = 8;
 	localparam L_NEUR_MODEL_PRECISION = 2;
 	localparam L_NEUR_HIGH_PREC_EN = 0;
 	localparam L_DFLT_CNTR_VAL = 40;
@@ -36,64 +36,100 @@ module sn_network_top_wrapper_generated
 	localparam L_UART_CLKS_PER_BIT = 87;
 	localparam L_UART_BITS_PER_PKT = 10;
 	localparam L_PROT_WATCHDOG_TIME = 870000000;
-	localparam L_TABLE_NUM_ROWS_ARRAY = {1,8,0,0,1,0,0,2,0,1,1,0,0,0,0,0,0,0};
-	localparam L_NEUR_CONST_CURRENT_ARRAY = {0,0,0,0,60,0,0,0,-12,0,0,0,0,0,0,0,0,0};
-	localparam L_NEUR_CNTR_VAL_ARRAY = {40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40};
+	localparam L_TABLE_NUM_ROWS_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {2,1,2,3,3,2,2,3,3,3,3,3,3,3,5,3,3,3};
+	localparam L_NEUR_CONST_CURRENT_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {0,0,10,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0};
+	localparam L_NEUR_CNTR_VAL_ARRAY [L_NUM_NEURONS:1] = {40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40};
 
 	localparam L_CTC_PER_NEUR_BW = L_TABLE_MAX_NUM_ROWS*(L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW);
 	logic [L_NUM_NEURONS-L_NUM_INPUTS:1] [L_TABLE_MAX_NUM_ROWS-1:0] [L_TABLE_WEIGHT_BW+L_TABLE_IDX_BW-1:0] cfg_table_contents;
 
 	assign cfg_table_contents = {
-		//N40 (Forward_Output)
+		//N41 (Subsystem_Left_Output_41)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(5),L_TABLE_WEIGHT_BW'(-60)}),
-		//N39 (Right_Output)
+			L_TABLE_IDX_BW'(27),L_TABLE_WEIGHT_BW'(-60),
+			L_TABLE_IDX_BW'(38),L_TABLE_WEIGHT_BW'(16)}),
+		//N40 (Subsystem_Forward_Output_40)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(36),L_TABLE_WEIGHT_BW'(-24),
-			L_TABLE_IDX_BW'(35),L_TABLE_WEIGHT_BW'(1000),
-			L_TABLE_IDX_BW'(20),L_TABLE_WEIGHT_BW'(24),
-			L_TABLE_IDX_BW'(4),L_TABLE_WEIGHT_BW'(68),
-			L_TABLE_IDX_BW'(8),L_TABLE_WEIGHT_BW'(34),
-			L_TABLE_IDX_BW'(15),L_TABLE_WEIGHT_BW'(14),
-			L_TABLE_IDX_BW'(30),L_TABLE_WEIGHT_BW'(200),
-			L_TABLE_IDX_BW'(31),L_TABLE_WEIGHT_BW'(242)}),
-		//N38 (Subsystem6)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N37 (Subsystem5)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N36 (Subsystem44)
+			L_TABLE_IDX_BW'(27),L_TABLE_WEIGHT_BW'(28)}),
+		//N39 (Subsystem_Right_Output_39)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(33),L_TABLE_WEIGHT_BW'(10)}),
-		//N35 (Subsystem40)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N34 (Subsystem4)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N33 (Test)
+			L_TABLE_IDX_BW'(27),L_TABLE_WEIGHT_BW'(-60),
+			L_TABLE_IDX_BW'(37),L_TABLE_WEIGHT_BW'(16)}),
+		//N38 (Subsystem 38)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(11),L_TABLE_WEIGHT_BW'(12),
-			L_TABLE_IDX_BW'(9),L_TABLE_WEIGHT_BW'(-12)}),
-		//N32 (Subsystem38)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N31 (Subsystem37)
+			L_TABLE_IDX_BW'(36),L_TABLE_WEIGHT_BW'(12),
+			L_TABLE_IDX_BW'(35),L_TABLE_WEIGHT_BW'(-12),
+			L_TABLE_IDX_BW'(34),L_TABLE_WEIGHT_BW'(20)}),
+		//N37 (Subsystem 37)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(5),L_TABLE_WEIGHT_BW'(-80)}),
-		//N30 (Subsystem36)
+			L_TABLE_IDX_BW'(36),L_TABLE_WEIGHT_BW'(-12),
+			L_TABLE_IDX_BW'(33),L_TABLE_WEIGHT_BW'(20),
+			L_TABLE_IDX_BW'(35),L_TABLE_WEIGHT_BW'(12)}),
+		//N36 (Subsystem 36)
 		L_CTC_PER_NEUR_BW'({
-			L_TABLE_IDX_BW'(5),L_TABLE_WEIGHT_BW'(-80)}),
-		//N29 (Subsystem35)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N28 (Subsystem34)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N27 (Subsystem33)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N26 (Subsystem32)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N25 (Subsystem31)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N24 (Subsystem30)
-		L_CTC_PER_NEUR_BW'({'0}),
-		//N23 (Subsystem3)
-		L_CTC_PER_NEUR_BW'({'0})};
+			L_TABLE_IDX_BW'(33),L_TABLE_WEIGHT_BW'(-12),
+			L_TABLE_IDX_BW'(34),L_TABLE_WEIGHT_BW'(-12)}),
+		//N35 (Subsystem 35)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(34),L_TABLE_WEIGHT_BW'(-12),
+			L_TABLE_IDX_BW'(33),L_TABLE_WEIGHT_BW'(2)}),
+		//N34 (Subsystem 34)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(27),L_TABLE_WEIGHT_BW'(-80),
+			L_TABLE_IDX_BW'(31),L_TABLE_WEIGHT_BW'(-24),
+			L_TABLE_IDX_BW'(32),L_TABLE_WEIGHT_BW'(24)}),
+		//N33 (Subsystem 33)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(27),L_TABLE_WEIGHT_BW'(-80),
+			L_TABLE_IDX_BW'(32),L_TABLE_WEIGHT_BW'(-24),
+			L_TABLE_IDX_BW'(31),L_TABLE_WEIGHT_BW'(24)}),
+		//N32 (Subsystem 32)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(30),L_TABLE_WEIGHT_BW'(24),
+			L_TABLE_IDX_BW'(29),L_TABLE_WEIGHT_BW'(24),
+			L_TABLE_IDX_BW'(28),L_TABLE_WEIGHT_BW'(24)}),
+		//N31 (Subsystem 31)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(24),L_TABLE_WEIGHT_BW'(24),
+			L_TABLE_IDX_BW'(25),L_TABLE_WEIGHT_BW'(24),
+			L_TABLE_IDX_BW'(26),L_TABLE_WEIGHT_BW'(24)}),
+		//N30 (Subsystem 30)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(22),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(23),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(21),L_TABLE_WEIGHT_BW'(18)}),
+		//N29 (Subsystem 29)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(20),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(18),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(19),L_TABLE_WEIGHT_BW'(18)}),
+		//N28 (Subsystem 28)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(16),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(17),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(15),L_TABLE_WEIGHT_BW'(18)}),
+		//N27 (Subsystem 27)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(11),L_TABLE_WEIGHT_BW'(28),
+			L_TABLE_IDX_BW'(12),L_TABLE_WEIGHT_BW'(28),
+			L_TABLE_IDX_BW'(14),L_TABLE_WEIGHT_BW'(28),
+			L_TABLE_IDX_BW'(13),L_TABLE_WEIGHT_BW'(28),
+			L_TABLE_IDX_BW'(10),L_TABLE_WEIGHT_BW'(28)}),
+		//N26 (Subsystem 26)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(9),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(8),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(7),L_TABLE_WEIGHT_BW'(18)}),
+		//N25 (Subsystem 25)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(6),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(5),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(4),L_TABLE_WEIGHT_BW'(18)}),
+		//N24 (Subsystem 24)
+		L_CTC_PER_NEUR_BW'({
+			L_TABLE_IDX_BW'(3),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(2),L_TABLE_WEIGHT_BW'(18),
+			L_TABLE_IDX_BW'(1),L_TABLE_WEIGHT_BW'(18)})};
 
 	// Network Top Module Instance:
 	//------------------------------
