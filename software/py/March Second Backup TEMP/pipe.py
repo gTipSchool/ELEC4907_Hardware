@@ -150,15 +150,8 @@ def pipeReaderClient(output_queue, name = "nci_pipe"):
             while not shutdown.is_set():
                 _, message = win32file.ReadFile(handle, 64*1024)
                 message = message.decode("utf-8")
-                output_queue.append(message)
+                output_queue.appendleft(message)
                 logging.info("Reader Client - Message Received: %s", message)
-                if message == "EXIT":
-                    logging.info("Reader Client - Received EXIT in input pipe. Shutting down Reader Pipe Thread.")
-                    sys.exit()
-                
-        ## profiling function, shuts down after some time being idle
-        
-        
     finally:
         logging.info("Reader Client - Shutting down reader client.")
             
@@ -197,10 +190,7 @@ def pipeWriterClient(input_queue, name = "nci_pipe"):
             
             while not shutdown.is_set():
                 if len(input_queue) > 0:
-                    message = input_queue.popleft()
-                    if message == "EXIT":
-                        logging.info("Writer Client - Received EXIT in output pipe queue. Shutting down Writer Pipe Thread.")
-                        sys.exit()
+                    message = input_queue.pop()
                     logging.info("Writer Client - Message to send: %s", message)
                     win32file.WriteFile(handle, message.encode())
                     logging.info("Writer Client - Message Sent: %s", message.encode())
@@ -208,13 +198,7 @@ def pipeWriterClient(input_queue, name = "nci_pipe"):
                     pass
     finally:
         logging.info("Writer Client - Shutting down writer client.")
-
-def start_pipes(from_server_q, to_server_q):
-    client_reader = threading.Thread(name = "client_reader", target = pipeReaderClient, args= (from_server_q, "nci_write",), daemon = True)
-    client_reader.start()
     
-    client_writer = threading.Thread(name = "client_writer", target = pipeWriterClient, args= (to_server_q, "nci_read", ))#, daemon = True)
-    client_writer.start()
 
 
 if __name__ == "__main__":
@@ -236,8 +220,8 @@ if __name__ == "__main__":
     
     while not shutdown.is_set():
         if len(from_server)> 0:
-            x = from_server.popleft()
-            to_server.append(x)
+            x = from_server.pop()
+            to_server.appendleft(x)
             
     # time.sleep(5)
     

@@ -22,17 +22,29 @@ import sys
 import threading
 from collections import deque
 import time
-from command_handler import start_command_packager
+from command_handler import start_command_packager, start_command_packager_v2
+
+# =============================================================================
+# PARAMETERS
+
+NUM_OUTPUTS = 3
+
+# =============================================================================
 
 shutdown = threading.Event()
 cts_high = threading.Event()
 watchdog_expired = threading.Event()
 
+# For use with pipe_connected_operation_test
+writing_to_fpga_done = threading.Event()
+reading_back_from_fpga_done = threading.Event()
+reading_back_from_fpga_done.set()
+
 def tests(fpga, test):
     try:
         if test == "basic":
             logging.info("Starting basic test.")
-            for x in range(0,30):
+            for x in range(0,255):
                 fpga.write_func(bytes([((x%16)<<4)+(x%16)]))
                 # time.sleep(0.05)
                 response = fpga.read_func()
@@ -77,7 +89,7 @@ class FPGA:
             # Connect to FPGA via com port. FPGA should raise CTS flag when waiting for initial instruction. 
             # When CTS is raised send a reset command to reset the FPGA
             
-            self.connection = serial.Serial(port = self.comPort, baudrate = self.baudRate, rtscts = False, timeout = 0.1)
+            self.connection = serial.Serial(port = self.comPort, baudrate = self.baudRate, rtscts = False, timeout = 1)
             logging.info("Connection succesful!")
             time.sleep(1)
             # self.reset()
@@ -90,14 +102,14 @@ class FPGA:
                 pass       
     
 
-    def read_func(self):
+    def read_func(self, num_bytes = 1):
         response = None
         timeout_counter = 0
         
         while (response == None and timeout_counter < 3):
-            response = self.connection.read(1)
+            response = self.connection.read(num_bytes)
             if response != None:
-                logging.info("Read %s.", response)
+                logging.info("Read %s.", response.hex(" ", 1))
                 break
             else:
                 timeout_counter += 1
@@ -106,8 +118,8 @@ class FPGA:
         return response
     
     
-    def read_outputs(self):
-        
+    def read_outputs(self, destination = None):
+        writing_to_fpga_done.wait()
         network_status = 1
         while network_status == 1:
             self.write_func(bytes([0]))
@@ -134,7 +146,6 @@ class FPGA:
             q.append(output_counter_sel_addr)
             q.append(addr)
             self.write_data(q)
-            
             self.write_func(counter_output_reg)
             outputs[idx] = int.from_bytes(self.read_func(), "big")
             logging.info("Output %d: %s",idx,outputs[idx])
@@ -144,8 +155,13 @@ class FPGA:
             else:
                 pass
         
-        return outputs
-            
+        
+        evaluated_outputs = eval_outputs(outputs)
+        reading_back_from_fpga_done.set()
+        if destination != None:
+            destination.append(evaluated_outputs)
+        else:
+            return evaluated_outputs
 
          
                 
@@ -188,52 +204,133 @@ class FPGA:
             self.connection.reset_output_buffer()
             self.connection.write(byte_to_send)
             self.connection.flush()
-            logging.info("Sent %s.", byte_to_send)
+            logging.info("Sent %s.", byte_to_send.hex(" ",1))
             return None
         except: 
             logging.info("Unable to send byte, check connection.")
+     
+    def run_iteration(self, source, destination = None):
+        while True:
             
-        
-    def write_data(self, source):
-        logging.warning("Starting to send data in queue.")
-        while len(source) != 0:
-            address_byte = source.popleft()
-            data_byte = source.popleft()
-            logging.info("Current packet: %s, %s", address_byte.hex(), data_byte.hex())            
-            address_failures = 0
-            data_failures = 0
+            if shutdown.is_set():
+                logging.info("Shutting down NN Iterator thread.")
+                break
             
-            while address_failures < 3 and data_failures < 3:
-                # logging.info("Waiting for CTS")
-                # cts_high.wait()
-                # logging.info("CTS is high, starting to write")
-                logging.warning("Sending address: %s", address_byte.hex())
-                self.write_func(address_byte)
-                address_response = self.read_func()
-                if address_response == None or address_response != address_byte:
-                    logging.info("Failed to send address")
-                    address_failures += 1
-                    continue
-                else:
-                    logging.warning("Received address: %s", address_response.hex())
-                
-                logging.warning("Sending data: %s", data_byte.hex())
-                self.write_func(data_byte)
-                
-                data_response = self.read_func()
-                if data_response == None or data_response != data_byte:
-                    logging.info("Failed to send data")
-                    data_failures += 1
-                    continue
-                else:
-                    logging.info("Received data byte: %s", data_response.hex())
+            if len(source) > 0:
+                message = source.popleft()
+                if message == "EXIT":
+                    logging.info("Received EXIT in tx_queue. Shutting down FPGA connection.")
+                    destination.append("EXIT")
+                    self.connection.close()
                     break
+                logging.info("Message to send: %s", message.hex(" ",1))
+                self.write_func(message) # send an input string to the FPGA
+                
+                ## Poll FPGA for a response
+                
+                error = True
+                outputs = None
+                
+                response = self.read_func(1)
+                for x in range(3):
                     
-            if address_failures == 3 or data_failures == 3:
-                logging.warning("Unable to send data")
-                self.connection.close()
-                sys.exit()
-        logging.warning("All data in queue sent.")
+                    self.write_func(bytes([0xff]))
+                    response = self.read_func(1)
+                    
+                    # Check if any data was received, or if the data received 
+                    # indicates that the network excution is incomplete "0"
+                    if response == bytes():
+                        logging.info("No response received.")
+                        
+                    elif response == bytes([0x01]):
+                        logging.info("Execution not yet complete.")
+                        
+                    elif response == bytes([0x00]):
+                        
+                        logging.info("Execution complete. Reading outputs")
+                        
+                        for i in range(3):
+                            outputs = self.read_func(3)
+                            
+                            if len(outputs) != NUM_OUTPUTS:
+                                logging.info("Not enough outputs received. Trying %s more times",(2-i))
+                                if i ==3 :
+                                    logging.info("Exiting.")
+                                    sys.exit()
+                                
+                            else:
+                                error = False
+                                break
+                                
+                            
+
+                        
+                    logging.info("ERROR: %s, X: %s", error,x)
+                    
+                    if (error == True) and (x == 2):
+                        logging.info("Unable to recover data. Exiting program.")
+                        sys.exit()
+                        
+                    elif outputs != None:
+                        
+                        evaluated_outputs = eval_outputs(outputs)
+                        
+                        if destination != None:
+                            destination.append(evaluated_outputs)
+                        else:
+                            logging.info("RESPONSE: %s",evaluated_outputs)
+                            #return evaluated_outputs
+                        break
+
+
+    def write_data(self, source):
+        logging.info("Starting FPGA writer")
+        # logging.warning("Starting to send data in queue.")
+        while len(source)>0:
+            reading_back_from_fpga_done.wait()
+            if len(source) != 0:
+                address_byte = source.popleft()
+                data_byte = source.popleft()
+                logging.info("Current packet: %s, %s", address_byte.hex(), data_byte.hex())            
+                address_failures = 0
+                data_failures = 0
+                
+                while address_failures < 3 and data_failures < 3:
+                    # logging.info("Waiting for CTS")
+                    # cts_high.wait()
+                    # logging.info("CTS is high, starting to write")
+                    logging.warning("Sending address: %s", address_byte.hex())
+                    self.write_func(address_byte)
+                    address_response = self.read_func()
+                    if address_response == None or address_response != address_byte:
+                        logging.info("Failed to send address")
+                        address_failures += 1
+                        continue
+                    else:
+                        logging.warning("Received address: %s", address_response.hex())
+                    
+                    logging.warning("Sending data: %s", data_byte.hex())
+                    self.write_func(data_byte)
+                    
+                    data_response = self.read_func()
+                    if data_response == None or data_response != data_byte:
+                        logging.info("Failed to send data")
+                        data_failures += 1
+                        continue
+                    else:
+                        logging.info("Received data byte: %s", data_response.hex())
+                        break
+                        
+                if address_failures == 3 or data_failures == 3:
+                    logging.warning("Unable to send data")
+                    # self.connection.close()
+                    # sys.exit()
+            else:
+                writing_to_fpga_done.set()
+                # continue
+            
+        logging.info("Shutting down FPGA writer")
+            # logging.warning("All data in queue sent.")
 
 def eval_outputs(outputs):           
 
@@ -243,6 +340,8 @@ def eval_outputs(outputs):
         return "CENTER"   
     else:
         return "RIGHT"
+    
+
 
 def cts_monitor(fpga):
 
@@ -264,6 +363,16 @@ def start_cts_monitor(fpga):
     monitor = threading.Thread(name = "cts_monitor", target = cts_monitor, args = (fpga,), daemon = True)
     monitor.start()
     
+def start_temp_fpga_writer(fpga, source_arr):
+    logging.info("FPGA writer thread started.")
+    writer = threading.Thread(name = "FPGA writer", target = fpga.write_data, args = (source_arr,), daemon = True)
+    writer.start()
+    
+def start_fpga_nn_iterator(fpga, source_arr, dest_arr = None):
+    logging.info("FPGA NN iterator thread started.")
+    writer = threading.Thread(name = "FPGA Iterator", target = fpga.run_iteration, args = (source_arr,dest_arr), daemon = True)
+    writer.start()
+    
        
 if __name__ == "__main__":
     
@@ -272,11 +381,42 @@ if __name__ == "__main__":
                     
     fpga = FPGA('COM3', 576000, exitOnFail = True)
     
-    # start_cts_monitor(fpga)
+    input_cmd = ['LD_INPUT,1,0',
+                 'LD_INPUT,2,0',
+                 'LD_INPUT,3,0',
+                 'LD_INPUT,4,0',
+                 'LD_INPUT,5,0',
+                 'LD_INPUT,6,0',
+                 'LD_INPUT,7,0',
+                 'LD_INPUT,8,0',
+                 'LD_INPUT,9,0',
+                 'LD_INPUT,10,0',
+                 'LD_INPUT,11,0',
+                 'LD_INPUT,12,5',
+                 'LD_INPUT,13,0',
+                 'LD_INPUT,14,0',
+                 'LD_INPUT,15,0',
+                 'LD_INPUT,16,0',
+                 'LD_INPUT,17,0',
+                 'LD_INPUT,18,0',
+                 'LD_INPUT,19,0',
+                 'LD_INPUT,20,0',
+                 'LD_INPUT,21,0',
+                 'LD_INPUT,22,0',
+                 'LD_INPUT,23,0',
+                 "RUN_EXECUTION"]
     
-    tests(fpga, "tests") # "tests"
+    instruction_queue = deque(input_cmd)
+    tx_cmd_queue = deque()
     
-    if fpga.connection.is_open:
-        fpga.connection.close()
+    
+    start_command_packager_v2(instruction_queue, tx_cmd_queue)
+    start_fpga_nn_iterator(fpga, tx_cmd_queue)
+    
+    for i in range(20):
+        time.sleep(1)
+        for item in input_cmd:
+            instruction_queue.append(item)
+    
     
     
