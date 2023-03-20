@@ -163,8 +163,8 @@ void calcRemParams(struct Neuron neur_arr[], struct HLParams* params) {
     // Update params:
     params->l_table_max_num_rows = max_rows;
     params->l_table_dflt_num_rows = 0;
-    params->l_table_weight_bw = (int)ceil(log2(max_weight));
-    params->l_neur_current_bw = (int)ceil(log2(wc_current));
+    params->l_table_weight_bw = (int)ceil(log2(max_weight))+1; // +1 for the sign bit.
+    params->l_neur_current_bw = (int)ceil(log2(wc_current))+1;
     return;
 }
 void printRTLParams(struct HLParams params) {
@@ -662,21 +662,21 @@ int main(int argc, char* argv[]) {
     fprintf(outfile, "\tlocalparam L_UART_BITS_PER_PKT = %d;\n", rtl_params.l_uart_bits_per_pkt);
     fprintf(outfile, "\tlocalparam L_PROT_WATCHDOG_TIME = %d;\n", rtl_params.l_prot_watchdog_time);
     //L_TABLE_NUM_ROWS_ARRAY
-    fprintf(outfile, "\tlocalparam L_TABLE_NUM_ROWS_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {");
+    fprintf(outfile, "\tlocalparam integer L_TABLE_NUM_ROWS_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {");
     for (int i = rtl_params.l_num_neurons; i > rtl_params.l_num_inputs; i--) {
         fprintf(outfile, "%d", neurons[findNeur(neurons, rtl_params.l_num_neurons, i)].num_weights);
         if (i != rtl_params.l_num_inputs+1) fprintf(outfile, ",");
     }
     fprintf(outfile, "};\n");
     //L_NEUR_CONST_CURRENT_ARRAY
-    fprintf(outfile, "\tlocalparam L_NEUR_CONST_CURRENT_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {");
+    fprintf(outfile, "\tlocalparam integer L_NEUR_CONST_CURRENT_ARRAY [L_NUM_NEURONS-L_NUM_INPUTS:1] = {");
     for (int i = rtl_params.l_num_neurons; i > rtl_params.l_num_inputs; i--) {
         fprintf(outfile, "%d", neurons[findNeur(neurons, rtl_params.l_num_neurons, i)].const_current);
         if (i != rtl_params.l_num_inputs+1) fprintf(outfile, ",");
     }
     fprintf(outfile, "};\n");
     //L_NEUR_CNTR_VAL_ARRAY
-    fprintf(outfile, "\tlocalparam L_NEUR_CNTR_VAL_ARRAY [L_NUM_NEURONS:1] = {");
+    fprintf(outfile, "\tlocalparam integer L_NEUR_CNTR_VAL_ARRAY [L_NUM_NEURONS:1] = {");
     for (int i = rtl_params.l_num_neurons; i > 0; i--) {
         fprintf(outfile, "%d", rtl_params.l_dflt_cntr_val); // FIXME if at some point all neurons have differing step lengths.
         if (i != 1) fprintf(outfile, ",");
