@@ -23,13 +23,10 @@ import threading
 from collections import deque
 import time
 from command_handler import start_command_packager, start_command_packager_v2
+import global_vars
+from math import ceil
+#import numpy as np
 
-# =============================================================================
-# PARAMETERS
-
-NUM_OUTPUTS = 3
-
-# =============================================================================
 
 shutdown = threading.Event()
 cts_high = threading.Event()
@@ -83,13 +80,13 @@ class FPGA:
         self.connect(exitOnFail)
     
     
-        
+    
     def connect(self, exitOnFail):
         try:
             # Connect to FPGA via com port. FPGA should raise CTS flag when waiting for initial instruction. 
             # When CTS is raised send a reset command to reset the FPGA
             
-            self.connection = serial.Serial(port = self.comPort, baudrate = self.baudRate, rtscts = False, timeout = 1)
+            self.connection = serial.Serial(port = self.comPort, baudrate = self.baudRate, rtscts = False, timeout = global_vars.READ_TIMEOUT)
             logging.info("Connection succesful!")
             time.sleep(1)
             # self.reset()
@@ -102,9 +99,12 @@ class FPGA:
                 pass       
     
 
-    def read_func(self, num_bytes = 1):
+    def read_func(self, num_bytes = 1, timeout = global_vars.READ_TIMEOUT):
         response = None
         timeout_counter = 0
+        
+        if self.connection.timeout != timeout:
+            self.connection.timeout = timeout
         
         while (response == None and timeout_counter < 3):
             response = self.connection.read(num_bytes)
@@ -116,6 +116,7 @@ class FPGA:
                 logging.info("Timed out waiting for response")
                 
         return response
+    
     
     
     def read_outputs(self, destination = None):
@@ -208,21 +209,30 @@ class FPGA:
             return None
         except: 
             logging.info("Unable to send byte, check connection.")
+            
      
-    def run_iteration(self, source, destination = None):
+    def fpga_writer(self, source, destination = None, debug_destination = None):
+        
         while True:
             
-            if shutdown.is_set():
+            if global_vars.shutdown.is_set():
                 logging.info("Shutting down NN Iterator thread.")
                 break
+            else:
+                pass
+
             
-            if len(source) > 0:
+            if (len(source) !=  0) and (source[0] == "EXIT"):
+                logging.info("Received EXIT in tx_queue. Shutting down FPGA connection.")
+                destination.append("EXIT")
+                debug_destination.append("EXIT")
+                self.connection.close()
+                break
+            
+            
+            elif (len(source) !=  0) and bytes([source[0][1]]) == bytes([0xFF]) :
+
                 message = source.popleft()
-                if message == "EXIT":
-                    logging.info("Received EXIT in tx_queue. Shutting down FPGA connection.")
-                    destination.append("EXIT")
-                    self.connection.close()
-                    break
                 logging.info("Message to send: %s", message.hex(" ",1))
                 self.write_func(message) # send an input string to the FPGA
                 
@@ -231,40 +241,40 @@ class FPGA:
                 error = True
                 outputs = None
                 
-                response = self.read_func(1)
+                
                 for x in range(3):
                     
-                    self.write_func(bytes([0xff]))
-                    response = self.read_func(1)
+                    response = self.read_func(4)
                     
                     # Check if any data was received, or if the data received 
                     # indicates that the network excution is incomplete "0"
                     if response == bytes():
                         logging.info("No response received.")
                         
-                    elif response == bytes([0x01]):
+                    elif response[0] == 1:
                         logging.info("Execution not yet complete.")
                         
-                    elif response == bytes([0x00]):
+                    elif response[0] == 0:
                         
                         logging.info("Execution complete. Reading outputs")
                         
-                        for i in range(3):
-                            outputs = self.read_func(3)
-                            
-                            if len(outputs) != NUM_OUTPUTS:
-                                logging.info("Not enough outputs received. Trying %s more times",(2-i))
-                                if i ==3 :
-                                    logging.info("Exiting.")
-                                    sys.exit()
-                                
+                        _ , *outputs = response
+                                                
+                        if len(outputs) < global_vars.NUM_OUTPUTS:
+                            logging.info("Not enough outputs received. Trying %s more times",(2-x))
+                            if x == 2 :
+                                logging.info("Exiting.")
+                                self.connection.close()
+                                sys.exit()
                             else:
                                 error = False
                                 break
-                                
-                            
+                    else:
+                        logging.info("Unknown response received. Shutting down FPGA connections.")
+                        self.connection.close()
+                        sys.exit()
 
-                        
+
                     logging.info("ERROR: %s, X: %s", error,x)
                     
                     if (error == True) and (x == 2):
@@ -281,6 +291,39 @@ class FPGA:
                             logging.info("RESPONSE: %s",evaluated_outputs)
                             #return evaluated_outputs
                         break
+                    else:
+                        pass
+            
+            elif (len(source) !=  0) and bytes([source[0][1]]) == bytes([0x55]):
+                message = source.popleft()
+                logging.info("Message to send: %s", message.hex(" ",1))
+                self.write_func(message) # send an input string to the FPGA
+                
+
+            elif (len(source) !=  0) and bytes([source[0][1]]) == bytes([0xAA]):
+                message = source.popleft()
+                logging.info("Message to send: %s", message.hex(" ",1))
+                self.write_func(message) # send an input string to the FPGA
+                # Determine how many bytes to read based on number of inputs
+                if global_vars.NUM_NEURONS%8 == 0:
+                    num_bytes_to_read = (global_vars.NUM_NEURONS/8)*global_vars.NUM_TIMESTEPS
+                    logging.info("Reading debug monitor log. %s bytes.", num_bytes_to_read)
+                    debug_log = self.read_func(num_bytes_to_read)
+                else:
+                    num_bytes_to_read = ceil(global_vars.NUM_NEURONS/8)*global_vars.NUM_TIMESTEPS
+                    logging.info("Reading debug monitor log. %s bytes.", num_bytes_to_read)
+                    debug_log = self.read_func(num_bytes_to_read)
+                    
+                    if debug_destination != None:
+                        debug_destination.append(debug_log)
+
+
+                    
+                    
+                
+            else:
+                pass
+                    
 
 
     def write_data(self, source):
@@ -368,55 +411,265 @@ def start_temp_fpga_writer(fpga, source_arr):
     writer = threading.Thread(name = "FPGA writer", target = fpga.write_data, args = (source_arr,), daemon = True)
     writer.start()
     
-def start_fpga_nn_iterator(fpga, source_arr, dest_arr = None):
-    logging.info("FPGA NN iterator thread started.")
-    writer = threading.Thread(name = "FPGA Iterator", target = fpga.run_iteration, args = (source_arr,dest_arr), daemon = True)
+def start_fpga_writer(fpga, source_arr, dest_arr = None, debug_dest_arr = None):
+    logging.info("FPGA Writer thread started.")
+    writer = threading.Thread(name = "FPGA Writer", target = fpga.fpga_writer, args = (source_arr,dest_arr,debug_dest_arr,), daemon = True)
     writer.start()
     
        
 if __name__ == "__main__":
     
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.DEBUG, datefmt="%H:%M:%S")
                     
     fpga = FPGA('COM3', 576000, exitOnFail = True)
     
-    input_cmd = ['LD_INPUT,1,0',
-                 'LD_INPUT,2,0',
-                 'LD_INPUT,3,0',
-                 'LD_INPUT,4,0',
-                 'LD_INPUT,5,0',
-                 'LD_INPUT,6,0',
-                 'LD_INPUT,7,0',
-                 'LD_INPUT,8,0',
-                 'LD_INPUT,9,0',
-                 'LD_INPUT,10,0',
-                 'LD_INPUT,11,0',
-                 'LD_INPUT,12,5',
-                 'LD_INPUT,13,0',
-                 'LD_INPUT,14,0',
-                 'LD_INPUT,15,0',
-                 'LD_INPUT,16,0',
-                 'LD_INPUT,17,0',
-                 'LD_INPUT,18,0',
-                 'LD_INPUT,19,0',
-                 'LD_INPUT,20,0',
-                 'LD_INPUT,21,0',
-                 'LD_INPUT,22,0',
-                 'LD_INPUT,23,0',
-                 "RUN_EXECUTION"]
-    
+    input_cmd = [
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR",
+                "SET_NUM_PERIODS,500",
+                'LD_INPUT,1,0',
+                'LD_INPUT,2,0',
+                'LD_INPUT,3,0',
+                'LD_INPUT,4,0',
+                'LD_INPUT,5,0',
+                'LD_INPUT,6,0',
+                'LD_INPUT,7,0',
+                'LD_INPUT,8,0',
+                'LD_INPUT,9,0',
+                'LD_INPUT,10,0',
+                'LD_INPUT,11,0',
+                'LD_INPUT,12,5',
+                'LD_INPUT,13,0',
+                'LD_INPUT,14,0',
+                'LD_INPUT,15,0',
+                'LD_INPUT,16,0',
+                'LD_INPUT,17,0',
+                'LD_INPUT,18,0',
+                'LD_INPUT,19,0',
+                'LD_INPUT,20,0',
+                'LD_INPUT,21,0',
+                'LD_INPUT,22,0',
+                'LD_INPUT,23,0',
+                "RUN_EXECUTION",
+                "READ_DEBUG_MONITOR"]
+
+
     instruction_queue = deque(input_cmd)
     tx_cmd_queue = deque()
     
+    debug_dest = []
     
     start_command_packager_v2(instruction_queue, tx_cmd_queue)
-    start_fpga_nn_iterator(fpga, tx_cmd_queue)
+    start_fpga_writer(fpga, tx_cmd_queue, debug_dest_arr = debug_dest)
     
-    for i in range(20):
-        time.sleep(1)
-        for item in input_cmd:
-            instruction_queue.append(item)
+
     
     
     

@@ -7,6 +7,8 @@ import logging
 import threading
 
 import win32pipe, win32file, pywintypes
+import global_vars
+
 
 # ========================  Threading Flags  ==================================
 

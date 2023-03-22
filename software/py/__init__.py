@@ -5,66 +5,41 @@ Created on Thu Mar  9 13:28:34 2023
 @author: yakovpetrukhin
 """
 
-from fpga import FPGA, eval_outputs, start_temp_fpga_writer, start_cts_monitor, start_fpga_nn_iterator
+# PROJECT INTERNAL LIBRARIES
+from fpga import FPGA, eval_outputs, start_fpga_writer, start_cts_monitor
 from pipe import start_pipes
 from command_handler import start_command_packager, start_command_packager_v2
+from debug_log_handler import start_debug_log_packager
+import global_vars
+
+# EXTRENAL LIBRARY IMPORTS
 import logging
 from collections import deque
 import time
 import threading
-import cProfile
-import pstats
-
-shutdown = threading.Event()
-
 
 def main():
+    
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.DEBUG, datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
                     
     fpga = FPGA('COM3', 576000, exitOnFail = True)
     
     engine_return_queue = deque([])
     instruction_queue = deque([])
     tx_cmd_queue = deque([])
+    debug_return_queue = deque([])
+    packaged_log_queue = deque([])
     
-    # logging.disable(logging.CRITICAL)
+    logging.disable(logging.CRITICAL)
     
     start_pipes(instruction_queue, engine_return_queue)
+    start_command_packager_v2(instruction_queue, tx_cmd_queue, global_vars.DEBUG_MONITOR_MODE)
+    start_fpga_writer(fpga, tx_cmd_queue, engine_return_queue, debug_return_queue)
+    start_debug_log_packager(debug_return_queue, packaged_log_queue, True)
     
-    start_command_packager_v2(instruction_queue, tx_cmd_queue)
     
-    start_fpga_nn_iterator(fpga, tx_cmd_queue, engine_return_queue)
-    
-    
-        
-    #start_temp_fpga_writer(fpga, tx_cmd_queue)
-    
-
-
-    # with cProfile.Profile() as pr:
-    #     fpga.write_data(tx_cmd_queue)
-    
-    # stats = pstats.Stats(pr)
-    # stats.sort_stats(pstats.SortKey.TIME)
-    # stats.print_stats()
-    # stats.dump_stats(filename='needs_profiling.prof')
-    
-
-  
-
 if __name__ == "__main__":
-    
-    with cProfile.Profile() as pr:
-        main()
-    
-    stats = pstats.Stats(pr)
-    stats.sort_stats(pstats.SortKey.TIME)
-    stats.print_stats()
-    stats.dump_stats(filename='needs_profiling.prof')
-    
 
-    
-    
-    
+    main()
     

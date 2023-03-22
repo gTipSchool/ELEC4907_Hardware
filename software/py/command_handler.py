@@ -12,9 +12,11 @@ import sys
 import threading
 from collections import deque
 import time
+import global_vars
+
 
 FPGA_PRECISION = 1
-NUMBER_OF_NEURONS = 21
+NUMBER_OF_NEURONS = 23
 
 shutdown = threading.Event()
 
@@ -49,14 +51,21 @@ def mmu_write(addr_neuron_index, addr_internal, value):
     return byte_string
     
     
-def command_packager_v2(instruction_queue, tx_cmd_queue):
+def command_packager_v2(instruction_queue, tx_cmd_queue, debug_mode = False):
+   
+    cmd = None
     byte_string = bytes()
+    
     while True:
         
         if shutdown.is_set():
             logging.info("Shutting down Command Packager thread.")
             break
             
+        ## CONDITION TO RUN DEBUG MONITOR AFTER EVERY ITERATION
+        if cmd == "RUN_EXECUTION" and debug_mode == True:
+            instruction_queue.appendleft("READ_DEBUG_MONITOR")
+        
         if len(instruction_queue) > 0:
             
             instruction = instruction_queue.popleft()
@@ -67,18 +76,38 @@ def command_packager_v2(instruction_queue, tx_cmd_queue):
                 address = int(args[0],10).to_bytes(2, "big")
                 input_current = (int(args[1],10)*(2**FPGA_PRECISION)).to_bytes(3, "big")
                 logging.debug("Received in command queue: %s, %s, %s", cmd,address.hex(), input_current.hex())
-
-                # byte_string = byte_string + address + input_current
+                
+                
                 byte_string = byte_string + input_current
                 
             elif cmd == "RUN_EXECUTION":
                 tx_cmd_queue.append(bytes([0x00,0xff])+byte_string)
                 logging.info(f"Appending to tx_queue: %s", (bytes([0x00,0xff])+byte_string).hex(" ",1))
                 byte_string = bytes()
+                
+            elif cmd == "SET_NUM_PERIODS":
+                # Parse command string for args
+                max_num_periods = int(args[0],10).to_bytes(2, "big")
+                logging.debug("Received in command queue: %s, %s", cmd,max_num_periods.hex())
+                
+                # Update NUM_TIMESTEPS global parameter
+                global_vars.NUM_TIMESTEPS = int(args[0],10)
+                
+                # Append CMD and NUM_PERIODS byte string to tx_queue
+                tx_cmd_queue.append(bytes([0x00,0x55])+max_num_periods)
+                logging.info(f"Appending to tx_queue: %s", (bytes([0x00,0x55])+max_num_periods).hex(" ",1))
+                
+            elif cmd == "READ_DEBUG_MONITOR":
+                logging.debug("Received in command queue: %s", cmd)
+                tx_cmd_queue.append(bytes([0x00,0xAA]))
+                logging.info(f"Appending to tx_queue: %s", bytes([0x00,0xAA]).hex(" ",1))
+
+            
+            
             elif cmd == "EXIT":
                 tx_cmd_queue.append("EXIT")
                 logging.info("Received EXIT command. Shutting down Command Packager thread.")
-
+                break
                 
             else:
                 logging.info("Unknown Command: %s", cmd)
@@ -164,8 +193,8 @@ def start_command_packager(instruction_queue, tx_cmd_queue):
     packager.start()
     logging.info("Starting Command Packager Thread.")
     
-def start_command_packager_v2(instruction_queue, tx_cmd_queue):
-    packager = threading.Thread(name = "command_packager", target = command_packager_v2, args = (instruction_queue, tx_cmd_queue,), daemon = False)
+def start_command_packager_v2(instruction_queue, tx_cmd_queue, debug_mode = False):
+    packager = threading.Thread(name = "command_packager", target = command_packager_v2, args = (instruction_queue, tx_cmd_queue,debug_mode,), daemon = False)
     packager.start()
     logging.info("Starting Command Packager Thread.")
 
